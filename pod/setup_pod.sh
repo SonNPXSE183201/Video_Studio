@@ -450,6 +450,62 @@ export AI_STUDIO_PYTHON="${COMFY_VENV}/bin/python"
 export COMFYUI_DIR="${COMFY_DIR}"
 EOF
 
+# Ổ container đọc nhanh hơn volume rất nhiều (đo trên volume Global: ~170 MB/s so với ~5 GB/s).
+# Model nạp lại nhiều lần mỗi chương (Qwen-Image <-> Qwen-Image-Edit <-> Wan), nên chép các model
+# hay dùng sang ổ container nếu đủ chỗ; phần còn lại dùng symlink tới volume.
+# Tắt: LOCAL_MODEL_CACHE=0. Container disk khuyến nghị 150 GB để chép được toàn bộ.
+MODEL_BASE="${COMFY_MODELS}"
+LOCAL_COMFY_MODELS="${LOCAL_RUNTIME_DIR}/models/comfyui"
+if [[ "${LOCAL_MODEL_CACHE:-1}" != "0" ]]; then
+  log "Chép model hay dùng sang ổ container (đọc nhanh hơn volume)"
+  mkdir -p "${LOCAL_COMFY_MODELS}"
+  reserve=$((15 * 1024 * 1024 * 1024))
+  mapfile -t model_files < <(
+    cd "${COMFY_MODELS}" && {
+      ls -1 text_encoders/qwen_2.5_vl* diffusion_models/qwen_image_fp8* vae/qwen_image* loras/Qwen-Image* \
+        diffusion_models/qwen_image_edit* diffusion_models/wan2.2_ti2v* text_encoders/umt5* vae/wan2.2* \
+        diffusion_models/wan2.2_i2v* loras/wan2.2* vae/wan_2.1* 2>/dev/null || true
+      find . -type f -name '*.safetensors' | sed 's|^\./||'
+    }
+  )
+  declare -A seen_model=()
+  copied=0
+  for rel in "${model_files[@]}"; do
+    [[ -n "${rel}" && -z "${seen_model[$rel]:-}" ]] || continue
+    seen_model[$rel]=1
+    src="${COMFY_MODELS}/${rel}"
+    dst="${LOCAL_COMFY_MODELS}/${rel}"
+    [[ -f "${src}" ]] || continue
+    mkdir -p "$(dirname "${dst}")"
+    size="$(stat -c %s "${src}")"
+    if [[ -f "${dst}" && ! -L "${dst}" ]] && [[ "$(stat -c %s "${dst}")" == "${size}" ]]; then
+      continue
+    fi
+    avail="$(df --output=avail -B1 "${LOCAL_COMFY_MODELS}" | tail -1 | tr -d ' ')"
+    if (( avail - size > reserve )); then
+      rm -f "${dst}" "${dst}.part"
+      if cp "${src}" "${dst}.part" && mv -f "${dst}.part" "${dst}"; then
+        echo "[CHÉP] ${rel} ($((size / 1024 / 1024)) MiB)"
+        copied=$((copied + 1))
+        continue
+      fi
+      rm -f "${dst}.part"
+    fi
+    [[ -L "${dst}" ]] || { rm -f "${dst}"; ln -s "${src}" "${dst}"; echo "[LIÊN KẾT] ${rel} (ổ container không đủ chỗ, đọc từ volume)"; }
+  done
+  MODEL_BASE="${LOCAL_COMFY_MODELS}"
+fi
+cat >"${CONFIG_DIR}/extra_model_paths.yaml" <<YAML
+ai_video_studio:
+  base_path: ${MODEL_BASE}
+  checkpoints: checkpoints
+  diffusion_models: diffusion_models
+  text_encoders: text_encoders
+  vae: vae
+  clip_vision: clip_vision
+  loras: loras
+YAML
+
 log "8/8 - Khởi động ComfyUI"
 if ! curl -fsS --max-time 3 http://127.0.0.1:8188/system_stats >/dev/null 2>&1; then
   start_detached "${RUN_DIR}/comfyui.pid" "${LOG_DIR}/comfyui.log" \

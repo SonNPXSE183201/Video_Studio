@@ -134,7 +134,7 @@ Dung lượng: **150 GB** (200 GB nếu dùng Wan 14B). Volume tính phí theo t
 Vào **Pods → Deploy**, rồi chọn lần lượt:
 1. **Template:** `PyTorch 2.8.0`. Ở ô phiên bản, chọn **CUDA 12.8.1** (image `runpod/pytorch:...-cu1281-torch280-ubuntu2404`).
 2. **Set overrides:**
-   - Container disk **60 GB**.
+   - Container disk **150 GB** (tối thiểu 60 GB). Mỗi lần khởi động, setup chép model từ volume sang ổ này. Đo thực tế: ổ container đọc ~5 GB/s, volume Global chỉ ~170 MB/s; nạp model 20 GB từ volume mất khoảng 2 phút mỗi lần.
    - Tích **Start Jupyter notebook** và **SSH terminal access**.
    - Cổng HTTP `8888`.
 3. **GPU:** xem bảng ở mục 1.
@@ -262,6 +262,7 @@ Volume **không chuyển được giữa tài khoản**. Trên tài khoản mớ
 | `INSTALL_SDXL=0` | Bỏ model dự phòng SDXL, tiết kiệm 7 GB |
 | `INSTALL_QWEN_EDIT=0` | Bỏ chức năng giữ mặt nhân vật, tiết kiệm 15 GB (không khuyến nghị) |
 | `UPDATE_COMFYUI=1` | Cập nhật ComfyUI khi `check` báo thiếu node |
+| `LOCAL_MODEL_CACHE=0` | Không chép model sang ổ container (khi container disk nhỏ) |
 | `AUTO_RUN=1 PROJECT=<du_an>` | Cài xong tự chạy dự án ở chế độ nền |
 
 ## 6. Sự cố thường gặp
