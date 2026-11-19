@@ -494,13 +494,14 @@ class Studio:
             images.generate(scene["positive"], scene["negative"], seed, image_path(scene), scene["reference_images"])
 
         todo = []
+        fps: Dict[str, str] = {}
         for scene in compiled:
             key = str(scene["index"])
             rec = records.get(key)
-            fp = scene_fp(scene)
+            fp = fps[key] = scene_fp(scene)
             if "images" in self.force or scene["index"] in redo or not rec or rec.get("fp") != fp or not os.path.exists(image_path(scene)):
                 todo.append(scene)
-                records[key] = {"fp": fp, "attempt": 0, "qa": None}
+                records.pop(key, None)   # chỉ ghi lại sau khi vẽ xong (dừng giữa chừng không bị coi là đã vẽ)
 
         # Gom cảnh theo model: Qwen-Image (không ảnh mẫu, đang nóng sau casting) trước, Qwen-Image-Edit sau.
         # Xen kẽ hai model 20 GB buộc ComfyUI nạp lại từ ổ mỗi lần đổi (đo: vài phút/lần trên volume mạng).
@@ -514,12 +515,12 @@ class Studio:
             try:
                 draw(scene, 0)
             except Exception as exc:
-                records.pop(str(scene["index"]), None)
                 self.project.save_chapter_state(number, state)
                 raise RuntimeError(f"Vẽ cảnh {scene['index']} thất bại: {exc}")
-            if n % 10 == 0:
+            records[str(scene["index"])] = {"fp": fps[str(scene["index"])], "attempt": 0, "qa": None}
+            self.project.save_chapter_state(number, state)   # lưu từng ảnh: dừng giữa chừng không mất ảnh đã vẽ
+            if n % 5 == 0:
                 log(f"  {n}/{len(todo)} ảnh", "Ảnh")
-                self.project.save_chapter_state(number, state)
         self.project.save_chapter_state(number, state)
 
         qa = ImageQA(self.ollama, qa_cfg, self.style, self.series)
