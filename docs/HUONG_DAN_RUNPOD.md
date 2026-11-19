@@ -129,6 +129,45 @@ nohup bash run.sh run nghich_luu_quang_am --stop-pod > /workspace/run.log 2>&1 &
 - **Ảnh mô tả đúng sự kiện:** đồ vật trong chương, tương tác giữa nhân vật, góc máy đa dạng.
 - **Giới hạn:** bộ mã hóa âm thanh của S2V được huấn luyện bằng tiếng Anh, nên khẩu hình với tiếng Việt khớp nhịp nhưng không khớp chính xác từng âm.
 
+## 6b. Xem tool đang làm gì (trong lúc chạy)
+
+Google Drive chỉ có kết quả khi làm xong. Trong lúc chạy, xem trực tiếp trên pod qua JupyterLab:
+1. Mở **RunPod → Pods → tên pod → Connect → Jupyter Lab**.
+2. Vào **`workspace` → `video_studio_projects` → `<du_an>`**.
+3. Nháy đúp để mở file: ảnh, video, âm thanh đều xem/nghe được ngay trong Jupyter.
+4. Bấm **⟳ (Refresh)** phía trên cây thư mục để thấy file mới.
+
+| Muốn xem | Đường dẫn (trong thư mục dự án) | Có từ khi nào |
+|---|---|---|
+| Thể loại, phong cách tool đã chọn | `series.yaml` | Sau bước phân tích |
+| Hồ sơ nhân vật, địa điểm | `bible/characters.json`, `bible/locations.json` | Sau Story Bible |
+| Kịch bản phân cảnh (nhân vật, hành động, người nói, prompt) | `work/ch0001/scenes.json`, `work/ch0001/prompts.json` | Sau bước đạo diễn |
+| Giọng đọc cả chương | `work/ch0001/audio/chapter.wav` | Sau bước giọng đọc |
+| Ảnh mẫu khuôn mặt nhân vật | `refs/<nhan_vat>/ref.png` | Khi bắt đầu vẽ |
+| Ảnh từng cảnh (hiện dần) | `work/ch0001/images/scene_0001.png`... | Trong lúc vẽ ảnh |
+| Clip chuyển động từng cảnh (hiện dần) | `work/ch0001/motion/scene_0001.mp4`... | Trong lúc làm chuyển động |
+| Video hoàn chỉnh | `output/chapters/Chuong_0001.mp4` | Khi xong |
+| Storyboard, thumbnail, báo cáo lỗi | `output/storyboards/`, `output/thumbnails/`, `output/reports/` | Khi xong |
+
+Xem tiến độ bằng Terminal (**File → New → Terminal**):
+```bash
+grep -vE 'transformers|Loading|Warning' /workspace/run.log | tail -20       # đang làm bước nào
+cd /root/AI_Video_Studio && bash run.sh status <du_an>                       # bảng: cảnh, audio, ảnh, clip, video
+ls /workspace/video_studio_projects/<du_an>/work/ch0001/images | wc -l       # đã vẽ bao nhiêu ảnh
+ls /workspace/video_studio_projects/<du_an>/work/ch0001/motion | wc -l       # đã làm bao nhiêu clip
+nvidia-smi                                                                   # GPU đang chạy bao nhiêu %
+```
+
+**Lưu ý:**
+- Chỉ xem; đừng sửa hay xóa file trong `work/` khi tool đang chạy.
+- Chương đã `.done` thì ảnh/clip trung gian đã bị xóa; xem bản cuối trên Drive.
+- Sau khi pod tắt, mọi thứ vẫn nằm trên volume; bật pod lên là xem lại được.
+
+**Thêm chương để sản xuất:**
+- Kéo file `Chuong_xxxx.txt` (UTF-8, tên có số chương) vào `workspace/video_studio_projects/<du_an>/chapters/`.
+- Lần chạy `run` sau sẽ tự làm các chương chưa xong.
+- `/workspace/upload` chỉ dùng một lần khi tạo dự án bằng `new --from`.
+
 ## 7. Tự chọn model và nâng chất lượng theo pod
 
 | Mức | Điều kiện | Thay đổi |

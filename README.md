@@ -98,6 +98,17 @@ nohup bash run.sh run ten_bo_truyen --stop-pod > /workspace/run.log 2>&1 &   # c
 tail -f /workspace/run.log
 ```
 
+### Xem tool đang làm gì
+Mở **Jupyter Lab** của pod → `workspace/video_studio_projects/<du_an>/`. Nháy đúp để xem ảnh, clip và nghe giọng đọc ngay trong trình duyệt:
+- `work/ch0001/images/`: ảnh từng cảnh.
+- `work/ch0001/motion/`: clip chuyển động.
+- `work/ch0001/audio/chapter.wav`: giọng đọc.
+- `output/`: video hoàn chỉnh, storyboard, báo cáo.
+
+Tiến độ: `bash run.sh status <du_an>` hoặc `tail -f /workspace/run.log`. Chi tiết: mục 6b trong [hướng dẫn](docs/HUONG_DAN_RUNPOD.md).
+
+**Thêm chương:** kéo file `.txt` vào `workspace/video_studio_projects/<du_an>/chapters/`. Lần chạy `run` sau tự làm các chương chưa xong.
+
 ### Lệnh thường dùng
 ```bash
 bash run.sh status ten_bo_truyen                          # tiến độ từng chương (XONG = đã .done)
