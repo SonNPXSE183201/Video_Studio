@@ -408,9 +408,30 @@ PY
   fi
 fi
 
-if [[ -f "${PROJECT_DIR}/rclone.conf" ]]; then
-  mkdir -p /root/.config/rclone
-  install -m 600 "${PROJECT_DIR}/rclone.conf" /root/.config/rclone/rclone.conf
+# rclone.conf: ưu tiên thư mục tool, sau đó /workspace/rclone.conf (giữ qua các lần Stop).
+for rclone_src in "${PROJECT_DIR}/rclone.conf" "${WORKSPACE_ROOT}/rclone.conf"; do
+  if [[ -f "${rclone_src}" ]]; then
+    mkdir -p /root/.config/rclone
+    install -m 600 "${rclone_src}" /root/.config/rclone/rclone.conf
+    [[ -f "${PROJECT_DIR}/rclone.conf" ]] || cp "${rclone_src}" "${PROJECT_DIR}/rclone.conf" 2>/dev/null || true
+    echo "[OK] Dùng rclone.conf từ ${rclone_src}"
+    break
+  fi
+done
+
+# Code đặt ngoài /workspace (volume Global không cho chmod nên git clone vào đó lỗi):
+# dữ liệu dự án vẫn phải nằm trên volume để không mất khi Stop pod.
+if [[ "${PROJECT_DIR}" != "${WORKSPACE_ROOT}"/* ]]; then
+  DATA_PROJECTS="${WORKSPACE_ROOT}/video_studio_projects"
+  mkdir -p "${DATA_PROJECTS}"
+  if [[ ! -L "${PROJECT_DIR}/projects" ]]; then
+    if [[ -d "${PROJECT_DIR}/projects" ]]; then
+      cp -r "${PROJECT_DIR}/projects/." "${DATA_PROJECTS}/"
+      rm -rf "${PROJECT_DIR}/projects"
+    fi
+    ln -s "${DATA_PROJECTS}" "${PROJECT_DIR}/projects"
+  fi
+  echo "[OK] Dự án lưu trên volume: ${DATA_PROJECTS} (liên kết tại ${PROJECT_DIR}/projects)"
 fi
 
 cat >"${RUNTIME_DIR}/env.sh" <<EOF

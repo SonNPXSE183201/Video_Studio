@@ -111,7 +111,8 @@ class Project:
                 if os.path.isfile(src) and name.lower().endswith(".txt"):
                     dst = os.path.join(self.chapters_dir, name)
                     if not os.path.exists(dst):
-                        shutil.copy2(src, dst)
+                        # copyfile: volume Global của RunPod không cho chmod (copy2 sẽ lỗi)
+                        shutil.copyfile(src, dst)
                         imported.append(name)
         return imported
 
