@@ -297,7 +297,6 @@ print(f"[OK] ComfyUI PyTorch {torch.__version__}; GPU {torch.cuda.get_device_nam
 if total < 30 * 2**30:
     print("[INFO] GPU < 30 GB: giữ ollama.model qwen2.5:14b và motion.model wan22_5b")
 PY
-PY
 
 # Dùng chung PyTorch CUDA mới của ComfyUI cho pipeline chính để tránh nhân đôi
 # nhiều GB wheel CUDA. Các package nghiệp vụ (OmniVoice, transformers, pydub...)
