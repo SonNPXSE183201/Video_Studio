@@ -4,6 +4,7 @@ import textwrap
 from typing import Any, Dict, List, Optional
 
 from core.utils import find_font, format_duration
+from core.subtitle import display_safe
 
 
 def _font(size: int, bold: bool = True):
@@ -44,7 +45,7 @@ def contact_sheet(scenes: List[Dict[str, Any]], out_path: str, columns: int = 5,
             flags.append("LLM?")
         label = f"#{scene['index']}  {scene.get('duration', 0):.1f}s  {' '.join(flags)}"
         draw.text((x + 8, y + thumb_h + 4), label, fill=(255, 210, 80), font=title_font)
-        caption = textwrap.shorten(scene.get("text", ""), width=110, placeholder="…")
+        caption = textwrap.shorten(display_safe(scene.get("text", "")), width=110, placeholder="…")
         for line_no, line in enumerate(textwrap.wrap(caption, width=48)[:3]):
             draw.text((x + 8, y + thumb_h + 30 + line_no * 19), line, fill=(220, 220, 220), font=text_font)
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
@@ -70,7 +71,7 @@ def thumbnail(image_path: str, title: str, out_path: str, size=(1280, 720)) -> O
     canvas = Image.composite(Image.new("RGB", size, (0, 0, 0)), canvas, shade.filter(ImageFilter.GaussianBlur(4)))
     draw = ImageDraw.Draw(canvas)
     font = _font(72)
-    lines = textwrap.wrap(title, width=26)[:2]
+    lines = textwrap.wrap(display_safe(title), width=26)[:2]
     y = size[1] - 60 - len(lines) * 86
     for line in lines:
         draw.text((60, y), line, font=font, fill=(255, 214, 64), stroke_width=5, stroke_fill=(0, 0, 0))

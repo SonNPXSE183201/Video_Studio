@@ -12,8 +12,20 @@ def _ass_time(ms: float) -> str:
     return f"{hours}:{minutes:02d}:{seconds:02d}.{cs:02d}"
 
 
+# Font phụ đề Latin (Noto Sans...) không có glyph CJK: 【】 hiện thành ô vuông (thấy trên pod thật).
+_DISPLAY_MAP = str.maketrans({
+    "【": "[", "】": "]", "〖": "[", "〗": "]", "「": "“", "」": "”", "『": "“", "』": "”",
+    "《": "«", "》": "»", "〈": "‹", "〉": "›", "（": "(", "）": ")", "：": ":", "，": ",",
+    "。": ".", "！": "!", "？": "?", "；": ";", "～": "~", "　": " ",
+})
+
+
+def display_safe(text: str) -> str:
+    return (text or "").translate(_DISPLAY_MAP)
+
+
 def _escape(text: str) -> str:
-    text = text.replace("\\", "/").replace("{", "(").replace("}", ")")
+    text = display_safe(text).replace("\\", "/").replace("{", "(").replace("}", ")")
     return re.sub(r"\s+", " ", text).strip()
 
 

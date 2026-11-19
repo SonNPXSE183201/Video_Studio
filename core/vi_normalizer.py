@@ -36,6 +36,23 @@ DEFAULT_GLOSSARY: Dict[str, str] = {
     "DNA": "đê en a",
     "CPU": "xê pê u",
     "AI": "ây ai",
+    # Từ mượn tiếng Anh hay gặp trong truyện hệ thống/đô thị (test thật: "hack" bị đọc thành "hát"/"hắc").
+    "hack": "hách",
+    "Hack": "Hách",
+    "hacker": "hách cơ",
+    "Hacker": "Hách cơ",
+    "game": "ghêm",
+    "Game": "Ghêm",
+    "online": "on lai",
+    "level": "le vồ",
+    "Level": "Le vồ",
+    "buff": "bấp",
+    "skill": "xkin",
+    "Skill": "Xkin",
+    "app": "áp",
+    "email": "i meo",
+    "laptop": "láp tóp",
+    "livestream": "lai xtrim",
 }
 
 UNITS = {
