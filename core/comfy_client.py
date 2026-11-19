@@ -278,20 +278,25 @@ class ImageGenerator:
     def prepare(self) -> None:
         """Gọi một lần sau khi ComfyUI chạy: chọn workflow khả dụng."""
         primary = str(self.cfg.get("workflow", "qwen_image"))
-        for name in (primary, "sdxl"):
-            problems = self._check(name, ["x.png"])
-            if not problems:
-                self.active_workflow = name
-                break
-            log(f"Workflow ảnh '{name}' chưa dùng được: {'; '.join(problems[:4])}", "Ảnh")
-        if not self.active_workflow:
-            raise ComfyError("Không có workflow ảnh nào chạy được trên ComfyUI. Chạy lại setup_pod.sh.")
         edit_name = str(self.cfg.get("edit_workflow", "") or "")
         if edit_name and self.cfg.get("use_reference_edit", True):
             problems = self._check(edit_name, ["a.png", "b.png"])
             self.edit_enabled = not problems
             if problems:
                 log(f"Workflow giữ mặt '{edit_name}' chưa dùng được: {'; '.join(problems[:4])}", "Ảnh")
+        single = self.edit_enabled and self.cfg.get("single_model", True)
+        for name in (primary, "sdxl"):
+            problems = self._check(name, ["x.png"])
+            if not problems:
+                self.active_workflow = name
+                break
+            if not single:
+                log(f"Workflow ảnh '{name}' chưa dùng được: {'; '.join(problems[:4])}", "Ảnh")
+        if not self.active_workflow and single:
+            # single_model: Qwen-Image-Edit vẽ mọi cảnh, không cần cài Qwen-Image/SDXL.
+            self.active_workflow = edit_name
+        if not self.active_workflow:
+            raise ComfyError("Không có workflow ảnh nào chạy được trên ComfyUI. Chạy lại setup_pod.sh.")
         log(
             f"Workflow ảnh: {self.active_workflow}"
             + (f" + giữ mặt bằng {edit_name}" if self.edit_enabled else ""),

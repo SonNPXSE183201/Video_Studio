@@ -22,6 +22,7 @@ SERIES_HEADER = """# ===========================================================
 
 DEFAULT_SERIES: Dict[str, Any] = {
     "title": "",
+    "drive_folder": "",            # tên thư mục trên Drive; để trống = dùng title
     "genre": "auto",
     "themes": "auto",
     "genre_by_chapter": {},
@@ -176,3 +177,34 @@ class Project:
 
     def chapter_video_path(self, chapter: int) -> str:
         return os.path.join(self.output_dir, "chapters", f"Chuong_{chapter:04d}.mp4")
+
+    # ------------------------------------------------------------ .done
+    def done_marker(self, chapter: int) -> str:
+        return os.path.join(self.work_dir, f"ch{chapter:04d}", ".done")
+
+    def is_done(self, chapter: int) -> bool:
+        return os.path.exists(self.done_marker(chapter))
+
+    def mark_done(self, chapter: int, info: Dict[str, Any]) -> int:
+        """Chương đã lên Drive: ghi .done rồi xóa file nặng (ảnh, clip, audio, video chương).
+
+        Giữ lại scenes.json/state.json/prompts.json (vài KB) để tra cứu. Trả về số byte đã giải phóng.
+        """
+        import shutil
+        import time
+
+        folder = os.path.join(self.work_dir, f"ch{chapter:04d}")
+        freed = 0
+        targets = [os.path.join(folder, sub) for sub in ("images", "motion", "audio", "render")]
+        targets.append(self.chapter_video_path(chapter))
+        for target in targets:
+            if os.path.isdir(target):
+                for root, _, files in os.walk(target):
+                    freed += sum(os.path.getsize(os.path.join(root, f)) for f in files if os.path.exists(os.path.join(root, f)))
+                shutil.rmtree(target, ignore_errors=True)
+            elif os.path.isfile(target):
+                freed += os.path.getsize(target)
+                os.remove(target)
+        os.makedirs(folder, exist_ok=True)
+        write_json(self.done_marker(chapter), {**info, "done_at": time.strftime("%Y-%m-%d %H:%M:%S")})
+        return freed

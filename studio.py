@@ -142,7 +142,7 @@ def cmd_status(cfg, args) -> None:
         audio = format_duration(timeline["total_duration_sec"]) if timeline.get("total_duration_sec") else "-"
         img = f"{len(images)}" + (f"/{qa_fail}!" if qa_fail else "")
         print(f"{number:>7} | {len(scenes) or '-':>4} | {audio:>8} | {img:>7} | {len(state.get('motion', {})):>6} | "
-              f"{'OK' if os.path.exists(video) else '-'}")
+              f"{'XONG (.done, đã lên Drive)' if project.is_done(number) else ('OK' if os.path.exists(video) else '-')}")
     episodes = read_json(project.episodes_state_path, {}) or {}
     if episodes:
         print("\nTập đã ghép:")
@@ -161,6 +161,25 @@ def cmd_styles(cfg, args) -> None:
     print("\nPHONG CÁCH VẼ (art_style trong series.yaml):")
     for style_id, data in list_art_styles().items():
         print(f"  {style_id:<20} {data.get('name', '')}")
+
+
+def cmd_drive(cfg, args) -> None:
+    import tempfile
+    import time
+
+    from core.drive_sync import DriveSync
+
+    project = open_project(cfg, args.name)
+    series = project.load_series()
+    folder = str(series.get("drive_folder") or series.get("title") or project.slug)
+    drive = DriveSync(cfg.get("upload", {}), os.path.join(project.logs_dir, "upload.log"))
+    print(f"Đích: {' '.join(drive.destination(folder + '/review'))}")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "_kiem_tra_ket_noi.txt")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(f"AI Video Studio - kiểm tra upload {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        ok = drive.upload(path, f"{folder}/review")
+    print("[OK] Upload được, xem thư mục trên Drive." if ok else f"[XX] Upload lỗi, xem {drive.log_file}")
 
 
 def cmd_check(cfg, args) -> None:
@@ -236,7 +255,7 @@ def main() -> None:
     p.add_argument("name")
     p.add_argument("--chapters", help="Ví dụ: 1-10 hoặc 3,5,8 (mặc định: tất cả)")
     p.add_argument("--until", choices=STAGES, help="Dừng sau bước này (xem thử nhanh)")
-    p.add_argument("--force", help=f"Làm lại các bước: {','.join(STAGES)},analyze")
+    p.add_argument("--force", help=f"Làm lại các bước: {','.join(STAGES)},analyze,done (chạy lại cả chương đã .done)")
     p.add_argument("--finish", action="store_true", help="Ghép cả tập cuối dù chưa đủ số chương")
     p.add_argument("--no-upload", action="store_true", help="Không upload Google Drive")
     p.add_argument("--stop-pod", action="store_true", help="Tự tắt RunPod khi xong")
@@ -259,6 +278,10 @@ def main() -> None:
 
     sub.add_parser("styles", help="Liệt kê thể loại và phong cách vẽ").set_defaults(func=cmd_styles)
     sub.add_parser("check", help="Kiểm tra dịch vụ, model, GPU").set_defaults(func=cmd_check)
+
+    p = sub.add_parser("drive", help="Thử upload một file nhỏ lên thư mục Drive của bộ truyện")
+    p.add_argument("name")
+    p.set_defaults(func=cmd_drive)
 
     args = parser.parse_args()
     args.func(load_config(args.config), args)

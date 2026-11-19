@@ -96,6 +96,11 @@ class Studio:
             self._motion.prepare()
         return self._motion
 
+    @property
+    def drive_folder(self) -> str:
+        """Thư mục của bộ truyện trên Drive: series.yaml > drive_folder, hoặc tên truyện."""
+        return str(self.series.get("drive_folder") or self.series.get("title") or self.project.slug)
+
     def free_gpu(self, keep: str) -> None:
         """Chỉ giữ một nhóm model trên GPU để không tràn VRAM."""
         if keep != "ollama" and self.ollama.health():
@@ -220,6 +225,11 @@ class Studio:
         try:
             self.ensure_series()
             chapters = [(n, p) for n, p in self.project.chapter_files() if chapter_filter is None or n in chapter_filter]
+            done = [n for n, _ in chapters if self.project.is_done(n)]
+            if done and "done" not in self.force:
+                log(f"Bỏ qua {len(done)} chương đã xong và đã lên Drive (.done): {done[:10]}{'...' if len(done) > 10 else ''}. "
+                    "Muốn làm lại: --force done", "Studio")
+                chapters = [(n, p) for n, p in chapters if n not in done]
             if not chapters:
                 log("Không có chương nào khớp để xử lý.", "Studio")
                 return False
@@ -388,7 +398,7 @@ class Studio:
             log(f"XONG: {out}", "Render")
         self._outputs(number, title, compiled, durations, timeline, state, work, clips)
         if self.cfg.get("upload", {}).get("upload_chapters", False) and not state.get("chapter_uploaded"):
-            if self.drive.upload(out, f"{self.project.slug}/chapters"):
+            if self.drive.upload(out, f"{self.drive_folder}/chapters"):
                 state["chapter_uploaded"] = True
                 self.project.save_chapter_state(number, state)
 
@@ -741,7 +751,7 @@ class Studio:
                     marker = f"{path}.uploaded"
                     if os.path.exists(marker):
                         os.remove(marker)  # luôn cập nhật bản mới
-                    self.drive.upload(path, f"{self.project.slug}/review")
+                    self.drive.upload(path, f"{self.drive_folder}/review")
 
     # ============================================================ episodes
     def build_episodes(self, finish: bool = False) -> None:
@@ -754,6 +764,8 @@ class Studio:
         for start in range(0, len(chapters), per):
             group = chapters[start : start + per]
             episode_no = start // per + 1
+            if all(self.project.is_done(n) for n, _ in group):
+                continue  # đã upload và dọn dẹp từ trước
             videos = [self.project.chapter_video_path(n) for n, _ in group]
             if not all(os.path.exists(v) for v in videos):
                 continue
@@ -775,6 +787,10 @@ class Studio:
                 marker = f"{out}.uploaded"
                 if os.path.exists(marker):
                     os.remove(marker)
-                record["uploaded"] = self.drive.upload(out, self.project.slug, delete_after=bool(ucfg.get("delete_local_episode", True)))
+                record["uploaded"] = self.drive.upload(out, self.drive_folder, delete_after=bool(ucfg.get("delete_local_episode", True)))
             state[str(episode_no)] = record
             write_json(self.project.episodes_state_path, state)
+            if record.get("uploaded") and ucfg.get("cleanup_after_upload", True):
+                for number, _ in group:
+                    freed = self.project.mark_done(number, {"episode": episode_no, "file": name, "drive_folder": self.drive_folder})
+                    log(f"Chương {number}: đã lên Drive, đánh dấu .done, xóa {freed / 1e9:.1f} GB file trung gian.", "Dọn dẹp")

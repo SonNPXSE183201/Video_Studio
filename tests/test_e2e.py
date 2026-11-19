@@ -271,6 +271,17 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual([], studio2._motion.s2v_calls)
             self.assertEqual(mtime, os.path.getmtime(video))
 
+            # Đã lên Drive -> .done, xóa file nặng; lần chạy sau bỏ qua chương này.
+            freed = project.mark_done(1, {"episode": 1})
+            self.assertGreater(freed, 0)
+            self.assertFalse(os.path.exists(video))
+            self.assertFalse(os.path.exists(os.path.join(project.work_dir, "ch0001", "images")))
+            self.assertTrue(os.path.exists(os.path.join(project.work_dir, "ch0001", "scenes.json")))
+            studio3, tts3 = make_studio()
+            self.assertFalse(studio3.run(finish=True))   # không còn chương nào cần làm
+            self.assertEqual([], studio3._images.calls)
+            self.assertEqual({}, tts3.attempts)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -226,11 +226,18 @@ episodes:
 # --- Google Drive qua rclone ---
 upload:
   enabled: true
-  remote_dest: "gdrive:Dự án truyện/AI_Video_Studio_Output"
+  remote: "gdrive"              # tên remote trong rclone.conf
+  # Thư mục gốc trên Drive theo ID (link drive.google.com/drive/folders/<ID>).
+  # Mỗi bộ truyện tự có thư mục con mang tên truyện: <Tên truyện>/ (video tập),
+  # <Tên truyện>/review/ (storyboard, báo cáo), <Tên truyện>/chapters/ (nếu upload_chapters).
+  root_folder_id: "1Y8HB6uJQXZDYvssRodvvNqzCrzMqsgP7"
+  remote_dest: "gdrive:AI_Video_Studio_Output"   # chỉ dùng khi root_folder_id để trống
   config_path: "rclone.conf"
   upload_chapters: false        # true: upload cả video từng chương
   upload_storyboards: true      # upload storyboard + báo cáo để duyệt từ xa
   delete_local_episode: true    # xóa video tập trên pod sau khi upload thành công
+  cleanup_after_upload: true    # tập đã lên Drive: các chương của tập được đánh dấu .done, xóa ảnh/clip/audio/video
+                                # trung gian (~1 GB/chương) và lần chạy sau tự bỏ qua (làm lại: --force done)
 
 runpod:
   stop_pod_when_done: false     # true: tự tắt pod khi chạy xong (cần runpodctl)
