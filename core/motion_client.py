@@ -21,7 +21,15 @@ class MotionGenerator:
     def __init__(self, comfy: ComfyClient, cfg: Dict[str, Any]):
         self.comfy = comfy
         self.cfg = cfg
-        self.model = str(cfg.get("model", "wan22_14b"))
+        self.model = str(cfg.get("model", "auto"))
+        self.lipsync = bool(cfg.get("lipsync", True))
+        if self.model == "auto":
+            from core.hardware import detect, pick_motion
+
+            choice = pick_motion(cfg, detect())
+            self.model = choice["model"]
+            self.lipsync = self.lipsync and choice["lipsync"]
+            log(f"Tự chọn theo cấu hình pod: {choice['reason']}", "Motion")
         self.ready: bool = False
         self.s2v_ready: bool = False
         self.problems: List[str] = []
@@ -221,7 +229,7 @@ class MotionGenerator:
             log(f"Motion '{model}' chưa dùng được: {'; '.join(problems[:3])}", "Motion")
         if not self.ready:
             log("Không có model chuyển động nào dùng được: toàn bộ cảnh dùng Ken Burns.", "Motion")
-        if (self.cfg.get("s2v") or {}).get("enabled", True) and self.cfg.get("lipsync", True):
+        if (self.cfg.get("s2v") or {}).get("enabled", True) and self.lipsync:
             try:
                 problems = self.comfy.missing_requirements(self.build_s2v("x.png", "a.wav", "t", "t", 1, 2))
                 problems = [p for p in problems if "LoadImage" not in p and "LoadAudio" not in p]

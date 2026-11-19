@@ -49,12 +49,12 @@ export PATH="${OLLAMA_HOME}/bin:${PATH}"
 export LD_LIBRARY_PATH="${OLLAMA_HOME}/lib/ollama:${LD_LIBRARY_PATH:-}"
 
 INSTALL_VIDEO_MODELS="${INSTALL_VIDEO_MODELS:-1}"
-INSTALL_QWEN_IMAGE="${INSTALL_QWEN_IMAGE:-0}"     # Qwen-Image thường (~21 GB): không cần khi image.single_model=true
+INSTALL_QWEN_IMAGE="${INSTALL_QWEN_IMAGE:-1}"     # Qwen-Image + Lightning (~21 GB): dự phòng khi Edit lỗi
 INSTALL_QWEN_EDIT="${INSTALL_QWEN_EDIT:-1}"       # Qwen-Image-Edit giữ mặt nhân vật (~20 GB)
-INSTALL_SDXL="${INSTALL_SDXL:-0}"                 # SDXL dự phòng (~7 GB), không cần khi có Qwen
+INSTALL_SDXL="${INSTALL_SDXL:-1}"                 # SDXL (~7 GB): dự phòng cuối cùng cho ảnh
 INSTALL_WAN14B="${INSTALL_WAN14B:-1}"             # Wan 2.2 14B I2V + LightX2V (~30 GB): chuyển động đẹp
 INSTALL_S2V="${INSTALL_S2V:-1}"                   # Wan 2.2 S2V 14B nhép miệng theo thoại (~17 GB)
-INSTALL_WAN5B="${INSTALL_WAN5B:-0}"               # Wan 2.2 5B (~10 GB): chỉ cần khi không dùng 14B
+INSTALL_WAN5B="${INSTALL_WAN5B:-1}"               # Wan 2.2 5B (~10 GB): tự dùng trên pod yếu
 PRELOAD_TTS_MODEL="${PRELOAD_TTS_MODEL:-1}"
 UPDATE_COMFYUI="${UPDATE_COMFYUI:-0}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"

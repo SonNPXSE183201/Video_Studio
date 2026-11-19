@@ -234,7 +234,7 @@ class ComfyTests(unittest.TestCase):
 
     def test_s2v_graph_chains_chunks(self):
         cfg = read_yaml(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "settings.yaml"))["motion"]
-        gen = MotionGenerator(FakeComfy({}), cfg)
+        gen = MotionGenerator(FakeComfy({}), {**cfg, "model": "wan22_14b"})
         graph = gen.build_s2v("img.png", "a.wav", "p", "n", 7, 3)
         for node_id, nd in graph.items():
             for value in nd["inputs"].values():
@@ -247,9 +247,20 @@ class ComfyTests(unittest.TestCase):
         # Như template: nhân đôi latent đầu, bỏ 3 ảnh đầu sau khi giải mã.
         self.assertEqual(3, graph["23"]["inputs"]["batch_index"])
 
+    def test_auto_picks_model_by_hardware(self):
+        from core.hardware import pick_motion
+
+        cfg = read_yaml(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "settings.yaml"))["motion"]
+        big = pick_motion(cfg, {"gpu": "L40S", "vram_gb": 48, "ram_gb": 94})
+        self.assertEqual(("wan22_14b", True), (big["model"], big["lipsync"]))
+        low_ram = pick_motion(cfg, {"gpu": "RTX PRO 4500", "vram_gb": 32, "ram_gb": 30})
+        self.assertEqual(("wan22_5b", False), (low_ram["model"], low_ram["lipsync"]))
+        small = pick_motion(cfg, {"gpu": "RTX 4000 Ada", "vram_gb": 20, "ram_gb": 62})
+        self.assertEqual(("wan22_14b", False), (small["model"], small["lipsync"]))
+
     def test_chain_clip_count(self):
         cfg = read_yaml(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "settings.yaml"))["motion"]
-        gen = MotionGenerator(FakeComfy({}), cfg)
+        gen = MotionGenerator(FakeComfy({}), {**cfg, "model": "wan22_14b"})
         clip = gen.clip_seconds()
         self.assertAlmostEqual(81 / 16, clip, places=3)
         self.assertEqual(1, gen.clips_needed(5.5))

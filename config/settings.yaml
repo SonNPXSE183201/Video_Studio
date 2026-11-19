@@ -130,7 +130,11 @@ casting:
 # Cảnh có nhân vật nói thoại (một mình trong khung) dùng Wan 2.2 S2V để nhép miệng theo giọng đọc.
 motion:
   enabled: true
-  model: "wan22_14b"            # wan22_14b (đẹp, cần INSTALL_WAN14B=1) | wan22_5b (nhẹ). Thiếu 14B tự dùng 5B
+  model: "auto"                 # auto = tự chọn theo VRAM/RAM của pod (xem auto bên dưới) | wan22_14b | wan22_5b
+                                # Thiếu file model nào thì tự lùi sang model còn lại, cuối cùng là Ken Burns.
+  auto:                         # ngưỡng tự chọn (pod yếu hơn -> Wan 5B, không nhép miệng)
+    wan14b_min: {vram_gb: 20, ram_gb: 46}
+    s2v_min: {vram_gb: 24, ram_gb: 46}
   coverage: "all"               # all = mọi cảnh | ratio = chỉ một phần cảnh (xem ratio)
   ratio: 0.25
   min_priority: 1
