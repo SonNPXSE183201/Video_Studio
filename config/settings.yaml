@@ -133,8 +133,8 @@ motion:
   model: "auto"                 # auto = tự chọn theo VRAM/RAM của pod (xem auto bên dưới) | wan22_14b | wan22_5b
                                 # Thiếu file model nào thì tự lùi sang model còn lại, cuối cùng là Ken Burns.
   auto:                         # ngưỡng tự chọn (pod yếu hơn -> Wan 5B, không nhép miệng)
-    wan14b_min: {vram_gb: 20, ram_gb: 46}
-    s2v_min: {vram_gb: 24, ram_gb: 46}
+    wan14b_min: {vram_gb: 20, ram_gb: 40}
+    s2v_min: {vram_gb: 24, ram_gb: 40}
   coverage: "all"               # all = mọi cảnh | ratio = chỉ một phần cảnh (xem ratio)
   ratio: 0.25
   min_priority: 1

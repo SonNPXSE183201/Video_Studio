@@ -66,10 +66,10 @@ def pick_motion(cfg: Dict[str, Any], hw: Dict[str, Any]) -> Dict[str, Any]:
     """
     rules = dict(cfg.get("auto", {}) or {})
     vram, ram = float(hw.get("vram_gb") or 0), float(hw.get("ram_gb") or 0)
-    need14 = rules.get("wan14b_min", {"vram_gb": 20, "ram_gb": 46})
-    need_s2v = rules.get("s2v_min", {"vram_gb": 24, "ram_gb": 46})
-    use14 = vram >= float(need14.get("vram_gb", 20)) and ram >= float(need14.get("ram_gb", 46))
-    lipsync = vram >= float(need_s2v.get("vram_gb", 24)) and ram >= float(need_s2v.get("ram_gb", 46))
+    need14 = rules.get("wan14b_min", {"vram_gb": 20, "ram_gb": 40})
+    need_s2v = rules.get("s2v_min", {"vram_gb": 24, "ram_gb": 40})
+    use14 = vram >= float(need14.get("vram_gb", 20)) and ram >= float(need14.get("ram_gb", 40))
+    lipsync = vram >= float(need_s2v.get("vram_gb", 24)) and ram >= float(need_s2v.get("ram_gb", 40))
     model = "wan22_14b" if use14 else "wan22_5b"
     reason = f"GPU {hw.get('gpu') or '?'} {vram:.0f} GB VRAM, RAM {ram:.0f} GB -> {model}" + (", nhép miệng S2V" if lipsync else ", không nhép miệng")
     return {"model": model, "lipsync": lipsync, "reason": reason}
