@@ -67,12 +67,10 @@ Phong cách vẽ: `3d_donghua`, `cinematic_realistic`, `anime_cn`, `ink_painting
 
 ### 2. Cài đặt (một lần, chạy lại sau mỗi lần Start pod)
 ```bash
-cd /workspace
-git clone https://github.com/SonNPXSE183201/Video_Studio.git AI_Video_Studio
-cd AI_Video_Studio
-# chép rclone.conf (Google Drive) vào thư mục này nếu muốn tự upload
-AUTO_RUN=0 bash setup.sh
+curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash
+cd /root/AI_Video_Studio
 ```
+Code nằm ở `/root/AI_Video_Studio`. Dữ liệu (model, dự án) nằm trên volume `/workspace`, còn `rclone.conf` đặt tại `/workspace/rclone.conf`. Sau mỗi lần Start pod, chạy lại đúng lệnh trên.
 Tùy chọn khi cài: `INSTALL_WAN14B=1` (chuyển động đẹp hơn, +32 GB), `INSTALL_QWEN_EDIT=0`, `INSTALL_SDXL=0`, `UPDATE_COMFYUI=1`.
 
 Kiểm tra mọi thứ đã sẵn sàng:

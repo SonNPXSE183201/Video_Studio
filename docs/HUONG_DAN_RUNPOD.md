@@ -113,94 +113,167 @@ chi phí 1 chương = giá/giờ × (số phút chạy 1 chương / 60)
 
 Chọn máy có chi phí một chương thấp nhất, không phải máy có giá theo giờ thấp nhất.
 
-## 2. Tạo pod
+## 2. Host từ đầu (tài khoản mới hoặc lần đầu)
 
-- **Template:** RunPod PyTorch 2.x, nên dùng bản CUDA 12.8 (bắt buộc với Blackwell để đỡ phải nâng cấp).
-- **Container Disk:** 60 GB. Venv, Ollama và cache giọng nằm ở `/opt` trên ổ này.
-- **Volume Disk:** 150 GB, mount tại `/workspace`. Dùng Wan 14B thì để 200 GB.
-- Volume của pod gắn với một máy vật lý. Nếu lúc Start lại máy hết GPU, pod sẽ chạy với 0 GPU: chờ máy trống, hoặc dùng Network Volume.
+### Bước 1: Chuẩn bị tài khoản RunPod
+1. Đăng ký tài khoản ở runpod.io, nạp tiền (Billing). Mỗi giờ chạy khoảng $0.5–0.8.
+2. Nên bật MFA (bảo mật hai lớp) cho tài khoản.
 
-## 3. Cài lần đầu
+### Bước 2: Tạo volume lưu trữ (để không phải tải lại khoảng 90 GB model)
 
+Menu **Storage → Network Volume → New**. Có hai loại:
+
+| Loại | Ưu điểm | Nhược điểm |
+|---|---|---|
+| **Network volume theo datacenter** | Ổn định, đọc model nhanh | Chỉ thuê được GPU ở đúng datacenter đó |
+| **Global** | Gắn được với GPU ở mọi nơi | **Không cho `chmod`** (nên code phải đặt ngoài `/workspace`, script đã tự xử lý). Có thể làm giảm RAM/vCPU của pod. |
+
+Dung lượng: **150 GB** (200 GB nếu dùng Wan 14B). Volume tính phí theo tháng, kể cả khi pod đã tắt.
+
+### Bước 3: Deploy pod
+Vào **Pods → Deploy**, rồi chọn lần lượt:
+1. **Template:** `PyTorch 2.8.0`. Ở ô phiên bản, chọn **CUDA 12.8.1** (image `runpod/pytorch:...-cu1281-torch280-ubuntu2404`).
+2. **Set overrides:**
+   - Container disk **60 GB**.
+   - Tích **Start Jupyter notebook** và **SSH terminal access**.
+   - Cổng HTTP `8888`.
+3. **GPU:** xem bảng ở mục 1.
+   - Sau khi gắn volume, **xem lại cột RAM** ở khung bên phải, vì volume Global có thể làm giảm RAM.
+   - Ví dụ thực tế: RTX PRO 4500 bị giảm còn 30 GB RAM, trong khi **RTX PRO 4500 SE** cùng giá vẫn có 94 GB RAM.
+4. **Storage → Add volume:** chọn volume ở bước 2, mount `/workspace`.
+5. **Instance pricing:** On-Demand.
+6. Bấm **Deploy Pod**.
+
+### Bước 4: Mở terminal
+Vào **Pods**, bấm tên pod, rồi chọn **Connect**:
+- Bấm **Jupyter Lab** (đợi trạng thái Ready).
+- Trong Jupyter chọn **Terminal**.
+
+### Bước 5: Cài đặt bằng một lệnh
 ```bash
-cd /workspace
-git clone https://github.com/SonNPXSE183201/Video_Studio.git AI_Video_Studio
-cd AI_Video_Studio
-AUTO_RUN=0 bash setup.sh 2>&1 | tee /workspace/setup.log
-bash run.sh check
+curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash
+```
+Lệnh này làm lần lượt:
+- Clone code vào `/root/AI_Video_Studio`.
+- Cài Python, Ollama, ComfyUI.
+- Tải model vào `/workspace/ai-video-studio-runtime`.
+- Bật dịch vụ và chạy `check`.
+
+Thời gian:
+- **Lần đầu khoảng 30–45 phút**, chủ yếu để tải khoảng 90 GB.
+- Muốn chạy nền để đóng được trình duyệt:
+  ```bash
+  (curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | nohup bash > /workspace/bootstrap.out 2>&1 &)
+  tail -f /workspace/setup.log
+  ```
+- Xong khi log in dòng `CÀI ĐẶT HOÀN TẤT`.
+
+Kiểm tra:
+```bash
+cd /root/AI_Video_Studio && bash run.sh check
 ```
 
-Lần đầu mất khoảng 30–60 phút, chủ yếu để tải khoảng 80 GB model. Sau đó mọi dòng của `check` phải là `[OK]`. Riêng `rclone` được báo `[XX]` nếu không upload Drive.
+### Bước 6: Google Drive (tùy chọn)
+1. Tải `rclone.conf` lên **`/workspace/rclone.conf`**: trong Jupyter, kéo thả file vào thư mục gốc.
+2. Chạy lại lệnh bootstrap. Setup tự cài file này mỗi lần khởi động.
+3. Remote trong file phải tên là `gdrive`.
 
-Tùy chọn đặt trước lệnh `bash setup.sh`:
+Trên volume Global sẽ thấy cảnh báo `Failed to set permissions on config file`. Cảnh báo này vô hại.
 
-| Biến | Tác dụng |
-|---|---|
-| `INSTALL_WAN14B=1` | Chuyển động đẹp hơn, thêm khoảng 32 GB. **Chỉ dùng với GPU 48 GB** |
-| `INSTALL_SDXL=0` | Bỏ model dự phòng SDXL, tiết kiệm 7 GB |
-| `INSTALL_QWEN_EDIT=0` | Bỏ chức năng giữ mặt nhân vật, tiết kiệm 15 GB (không khuyến nghị) |
-| `UPDATE_COMFYUI=1` | Cập nhật ComfyUI khi `check` báo thiếu node |
-
-## 4. Đưa file lên pod
-
-```powershell
-# Máy nhà (Windows), dùng runpodctl.exe từ github.com/runpod/runpodctl/releases
-runpodctl send rclone.conf
-runpodctl send chuong.zip
-```
+### Bước 7: Tạo dự án và đưa chương lên
 ```bash
-# Trên pod
-cd /workspace/AI_Video_Studio
-runpodctl receive <mã>
-unzip chuong.zip -d projects/ten_bo_truyen/chapters/
-AUTO_RUN=0 bash setup.sh      # cài rclone.conf vào hệ thống (bỏ qua phần đã có)
-rclone lsd gdrive:            # kiểm tra kết nối Drive
+cd /root/AI_Video_Studio
+bash run.sh new "Trong Sinh 2003"          # tạo dự án trong /workspace/video_studio_projects/trong_sinh_2003/
 ```
+Đưa file `Chuong_xxxx.txt` (UTF-8) vào thư mục chương của dự án theo một trong hai cách:
+- **Jupyter:** mở thư mục `video_studio_projects/trong_sinh_2003/chapters/` ở cây bên trái, rồi kéo thả file vào.
+- **runpodctl:** trên máy nhà chạy `runpodctl send chuong.zip`; trên pod chạy `runpodctl receive <mã>`, rồi `unzip chuong.zip -d /workspace/video_studio_projects/trong_sinh_2003/chapters/`.
 
-Nếu template có JupyterLab (cổng 8888), bạn cũng có thể kéo thả file qua trình duyệt.
+`projects/` trong thư mục code là liên kết tới `/workspace/video_studio_projects/`, nên dữ liệu không mất khi tắt pod.
 
-## 5. Tạo dự án và chạy thử
+**Giọng đọc riêng:**
+1. Chép file `giong.wav` (6–10 giây, sạch) và `giong.txt` (ghi đúng từng chữ trong đoạn wav) vào thư mục dự án.
+2. Khai báo trong `series.yaml`:
+   ```yaml
+   voice:
+     ref_audio: giong.wav
+     ref_text: giong.txt
+   ```
 
+### Bước 8: Chạy thử một chương, rồi chạy cả bộ
 ```bash
-bash run.sh new "Ten Bo Truyen"
-# chép Chuong_0001.txt ... vào projects/ten_bo_truyen/chapters/ (UTF-8)
-bash run.sh run ten_bo_truyen --chapters 1 --until images --no-upload   # xem ảnh trước
-bash run.sh run ten_bo_truyen --chapters 1 --no-upload                  # làm trọn 1 chương
-```
-
-Kiểm tra lại `series.yaml` (thể loại, chủ đề) và `bible/characters.json` (ngoại hình). Sửa nếu sai rồi chạy lại: tool chỉ làm lại phần bị ảnh hưởng.
-
-**Giọng đọc:** chuẩn bị file wav dài 6–10 giây, sạch, không nhạc nền, và file `.txt` ghi đúng từng chữ trong đoạn wav. Khai báo cả hai trong `series.yaml > voice`.
-
-## 6. Chạy cả bộ
-
-```bash
-nohup bash run.sh run ten_bo_truyen --stop-pod > /workspace/run.log 2>&1 &
+bash run.sh run trong_sinh_2003 --chapters 484 --no-upload      # thử 1 chương
+bash run.sh status trong_sinh_2003
+nohup bash run.sh run trong_sinh_2003 --stop-pod > /workspace/run.log 2>&1 &   # cả bộ, xong tự tắt pod
 tail -f /workspace/run.log
 ```
 
-`--stop-pod` tắt pod khi xong. Volume vẫn bị tính phí lưu trữ, khoảng $0.07/GB/tháng.
+Kết quả nằm ở `/workspace/video_studio_projects/<du_an>/output/`:
+- `chapters/`: video từng chương.
+- `episodes/`: video ghép theo tập.
+- `storyboards/`: ảnh tổng hợp các cảnh.
+- `reports/`: báo cáo lỗi.
 
-## 7. Sau mỗi lần Start lại pod
+Có thể tải về qua Jupyter (chuột phải vào file, chọn Download), hoặc để tool tự upload lên Drive.
 
+## 3. Sau khi Stop pod và Start lại (cùng tài khoản)
+
+Khi pod Stop, ổ container bị xóa: mất code, Python và Ollama. Volume `/workspace` vẫn còn đủ model, dự án và `rclone.conf`.
+
+1. Vào **Pods**, chọn pod, bấm **Start**. Nếu báo hết GPU, Deploy pod mới gắn cùng volume.
+2. Mở Jupyter, rồi Terminal.
+3. Chạy lại đúng lệnh bootstrap. Lần này **khoảng 5–10 phút** vì không tải lại model:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash
+   ```
+4. Chạy tiếp. Tool tự bỏ qua phần đã làm nhờ cache:
+   ```bash
+   cd /root/AI_Video_Studio
+   nohup bash run.sh run trong_sinh_2003 --stop-pod > /workspace/run.log 2>&1 &
+   ```
+
+Muốn cài xong tự chạy luôn thì dùng một lệnh:
 ```bash
-cd /workspace/AI_Video_Studio
-git pull
-AUTO_RUN=0 bash setup.sh             # khoảng 10–20 phút, không tải lại model lớn
-bash run.sh run ten_bo_truyen        # chạy tiếp từ chỗ dừng
+curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | AUTO_RUN=1 PROJECT=trong_sinh_2003 bash
 ```
 
-Muốn cài xong tự chạy nền luôn thì dùng: `PROJECT=ten_bo_truyen bash setup.sh`.
+## 4. Chuyển sang tài khoản RunPod khác
 
-## 8. Sự cố thường gặp
+Volume **không chuyển được giữa tài khoản**. Trên tài khoản mới:
+1. Làm lại mục 2 từ đầu, bao gồm tải lại model, khoảng 30–45 phút.
+2. Chuyển dữ liệu dự án cũ. Trên pod cũ:
+   ```bash
+   cd /workspace && tar -czf du_an.tgz video_studio_projects
+   ```
+   Tải file đó về máy (qua Jupyter, hoặc `runpodctl send du_an.tgz`), rồi đưa lên `/workspace` của pod mới và chạy:
+   ```bash
+   tar -xzf du_an.tgz -C /workspace
+   ```
+   Giữ lại dự án cũ giúp tool dùng lại được Story Bible, ảnh mẫu nhân vật và cache, không phải làm lại.
+3. Chép `rclone.conf` vào `/workspace/rclone.conf`.
+
+## 5. Tùy chọn khi cài
+
+Đặt biến trước lệnh, ví dụ `... | INSTALL_WAN14B=1 bash`:
+
+| Biến | Tác dụng |
+|---|---|
+| `INSTALL_WAN14B=1` | Chuyển động đẹp hơn, thêm khoảng 32 GB. Cần GPU ≥ 32 GB, rồi đặt `motion.model: wan22_14b` |
+| `INSTALL_SDXL=0` | Bỏ model dự phòng SDXL, tiết kiệm 7 GB |
+| `INSTALL_QWEN_EDIT=0` | Bỏ chức năng giữ mặt nhân vật, tiết kiệm 15 GB (không khuyến nghị) |
+| `UPDATE_COMFYUI=1` | Cập nhật ComfyUI khi `check` báo thiếu node |
+| `AUTO_RUN=1 PROJECT=<du_an>` | Cài xong tự chạy dự án ở chế độ nền |
+
+## 6. Sự cố thường gặp
 
 | Triệu chứng | Cách xử lý |
 |---|---|
-| `Ollama/ComfyUI chưa chạy` | `AUTO_RUN=0 bash setup.sh` |
+| `git clone` báo `chmod ... Operation not permitted` | Volume Global: dùng lệnh bootstrap, vì code đặt ở `/root` |
+| `Ollama/ComfyUI chưa chạy` | Chạy lại lệnh bootstrap |
 | `CUDA out of memory` | `motion.model: wan22_5b`, hoặc `motion.enabled: false` |
-| `no kernel image is available` (Blackwell) | Chạy lại `AUTO_RUN=0 bash setup.sh`; dùng template CUDA 12.8 |
+| `no kernel image is available` (Blackwell) | Dùng template CUDA 12.8; chạy lại bootstrap |
 | Pod bị kill, log dừng đột ngột | Thiếu RAM: thuê pod RAM ≥ 48 GB |
-| Dựng video rất chậm | Pod không có NVENC (MIG): thuê pod nhiều vCPU hơn, hoặc GPU khác |
-| Ảnh một cảnh xấu | `bash run.sh redo <du_an> --ch 3 --scene 12 --stage image` |
+| Dựng video rất chậm | Pod không có NVENC (MIG/B300): thuê pod nhiều vCPU hơn, hoặc GPU khác |
+| Ảnh một cảnh xấu | `bash run.sh redo <du_an> --ch 484 --scene 12 --stage image` |
 | Đọc sai tên riêng | Thêm vào `bible/glossary.json`, rồi `run --force audio` |
-| Xem log | `/workspace/run.log`; `/workspace/ai-video-studio-runtime/logs/comfyui.log` và `ollama.log` |
+| Xem log | `/workspace/setup.log`, `/workspace/run.log`, `/workspace/ai-video-studio-runtime/logs/` |
