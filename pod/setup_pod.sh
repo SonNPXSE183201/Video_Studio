@@ -260,10 +260,19 @@ fi
 
 # comfy-kitchen mới dùng annotation list[int] trong torch.library.custom_op.
 # PyTorch chỉ hỗ trợ kiểu này từ 2.7; template PyTorch 2.4 sẽ làm ComfyUI crash.
+# GPU Blackwell (RTX PRO 4000/6000, RTX 50xx: sm_120) cần bản build CUDA 12.8 có
+# kernel sm_120; bản cu126 dù >= 2.7 vẫn báo "no kernel image" nên cũng phải nâng.
 if ! "${COMFY_VENV}/bin/python" - <<'PY'
 import torch
 parts = torch.__version__.split("+", 1)[0].split(".")
-raise SystemExit(0 if tuple(map(int, parts[:2])) >= (2, 7) else 1)
+ok = tuple(map(int, parts[:2])) >= (2, 7)
+if ok and torch.cuda.is_available():
+    major, minor = torch.cuda.get_device_capability(0)
+    arch = f"sm_{major}{minor}"
+    if arch not in torch.cuda.get_arch_list():
+        print(f"[INFO] PyTorch {torch.__version__} thiếu kernel {arch} cho GPU này")
+        ok = False
+raise SystemExit(0 if ok else 1)
 PY
 then
   log "Nâng riêng ComfyUI lên PyTorch 2.7.1 CUDA 12.8"
@@ -274,7 +283,13 @@ fi
 "${COMFY_VENV}/bin/python" - <<'PY'
 import torch, comfy_kitchen
 assert torch.cuda.is_available(), "ComfyUI PyTorch không nhận CUDA"
-print(f"[OK] ComfyUI PyTorch {torch.__version__}; comfy-kitchen import thành công")
+(torch.ones(4, device="cuda") * 2).sum().item()   # bắt lỗi "no kernel image" sớm
+free, total = torch.cuda.mem_get_info()
+print(f"[OK] ComfyUI PyTorch {torch.__version__}; GPU {torch.cuda.get_device_name(0)} "
+      f"{total / 2**30:.0f} GB; comfy-kitchen import thành công")
+if total < 30 * 2**30:
+    print("[INFO] GPU < 30 GB: giữ ollama.model qwen2.5:14b và motion.model wan22_5b")
+PY
 PY
 
 # Dùng chung PyTorch CUDA mới của ComfyUI cho pipeline chính để tránh nhân đôi

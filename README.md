@@ -59,9 +59,11 @@ Phong cách vẽ: `3d_donghua`, `cinematic_realistic`, `anime_cn`, `ink_painting
 
 ## Sử dụng trên RunPod
 
+> Hướng dẫn chi tiết (chọn GPU, đưa file lên pod, sự cố): **[docs/HUONG_DAN_RUNPOD.md](docs/HUONG_DAN_RUNPOD.md)**
+
 ### 1. Tạo Pod
-- GPU có NVENC, khuyến nghị **48 GB VRAM** (A40 / RTX A6000 / L40S). Máy 24 GB vẫn chạy được: đặt `ollama.model: qwen2.5:14b`, `motion.model: wan22_5b`.
-- Template RunPod PyTorch (CUDA 12.x), volume ≥ 150 GB gắn tại `/workspace`.
+- GPU có NVENC. Khuyến nghị **A40 48 GB**. Máy 24 GB (RTX 4090, 3090, RTX PRO 4000, L4, PRO 6000 MIG 24GB) chạy được với cấu hình mặc định (`qwen2.5:14b`, `wan22_5b`), cần RAM ≥ 48 GB.
+- Template RunPod PyTorch (CUDA 12.8 nếu là GPU Blackwell), container disk 60 GB, volume ≥ 150 GB gắn tại `/workspace`.
 
 ### 2. Cài đặt (một lần, chạy lại sau mỗi lần Start pod)
 ```bash
