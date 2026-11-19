@@ -39,9 +39,9 @@ Cài đặt: lệnh bootstrap mặc định tải Wan 14B, S2V và Qwen (`INSTAL
 
 ```bash
 cd /root/AI_Video_Studio
-# Đưa lên pod (kéo thả vào Jupyter, thư mục /workspace/upload/):
-#   Chuong_0001.txt ... Chuong_0003.txt  (từ AI_Novel_Generator_V2/output/Arc_1/Tap_1)
-#   clone_voice_clean.wav + clone_voice_clean.txt  (từ DocTruyenV2/input)
+# Kéo thả file D:\Dự án truyện\Tool\upload_test_nghich_luu.zip vào thư mục workspace trong Jupyter
+# (gồm Chuong_0001-0003.txt + clone_voice_clean.wav/.txt), rồi giải nén:
+mkdir -p /workspace/upload && unzip -o /workspace/upload_test_nghich_luu.zip -d /workspace/upload
 bash run.sh new "Nghich Luu Quang Am" --from /workspace/upload --voice /workspace/upload/clone_voice_clean.wav
 bash run.sh run nghich_luu_quang_am --chapters 1 --no-upload
 ```
