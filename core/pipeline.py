@@ -501,6 +501,13 @@ class Studio:
             if "images" in self.force or scene["index"] in redo or not rec or rec.get("fp") != fp or not os.path.exists(image_path(scene)):
                 todo.append(scene)
                 records[key] = {"fp": fp, "attempt": 0, "qa": None}
+
+        # Gom cảnh theo model: Qwen-Image (không ảnh mẫu, đang nóng sau casting) trước, Qwen-Image-Edit sau.
+        # Xen kẽ hai model 20 GB buộc ComfyUI nạp lại từ ổ mỗi lần đổi (đo: vài phút/lần trên volume mạng).
+        def model_order(scene: Dict[str, Any]) -> tuple:
+            return (bool(images.edit_enabled and scene["reference_images"]), scene["index"])
+
+        todo.sort(key=model_order)
         if todo:
             log(f"Vẽ {len(todo)}/{len(compiled)} ảnh ({images.active_workflow})...", "Ảnh")
         for n, scene in enumerate(todo, start=1):
@@ -536,7 +543,7 @@ class Studio:
                 if not review.get("ok", True):
                     failed.append(scene)
             self.project.save_chapter_state(number, state)
-            retry = [s for s in failed if records[str(s["index"])]["attempt"] < max_rounds]
+            retry = sorted((s for s in failed if records[str(s["index"])]["attempt"] < max_rounds), key=model_order)
             if not retry or round_no == max_rounds:
                 break
             self.ollama.unload_all()
