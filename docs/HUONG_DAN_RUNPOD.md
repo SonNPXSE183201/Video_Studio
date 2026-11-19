@@ -48,6 +48,50 @@ bash run.sh run nghich_luu_quang_am --chapters 1 --no-upload
 
 Muốn tiết kiệm khi thử: `--until images` để xem ảnh trước (khoảng 30 phút), hài lòng rồi mới chạy tiếp phần chuyển động.
 
+## 0b. Tài khoản RunPod mới (cấu hình ngày 20/11/2026)
+
+**Đã tạo sẵn trên tài khoản mới**
+- **Volume Global `ai_video_studio`**, gắn tại `/workspace`.
+  - Tự giãn theo dữ liệu thực tế, 100 GB đầu miễn phí, sau đó $0.09/GB/tháng, cộng phí đọc/ghi.
+  - Toàn bộ model khoảng 150 GB, tức khoảng **$4.5/tháng**.
+- **Mẫu pod**: template PyTorch 2.8 / CUDA 12.8.1, container disk 200 GB, Jupyter + SSH, GPU RTX PRO 4500 SE.
+
+**L40S có chạy được Wan 14B không?** Có, và dư sức.
+- 48 GB VRAM, có fp8 và NVENC.
+- Chế độ `auto` sẽ chọn Wan 14B + nhép miệng S2V.
+- Nhanh hơn RTX PRO 4500 khoảng 1,3 lần. Giá trên tài khoản mới là $1.09/giờ.
+- Chỉ cần kiểm tra cột **RAM ≥ 46 GB** khi thuê (khung bên phải trang Deploy).
+
+**Lần đầu bật pod**
+1. Mở Jupyter. Trong thư mục `workspace`, kéo thả vào:
+   - `rclone.conf` (lấy từ `D:\Dự án truyện\Tool\AI_Video_Studio\rclone.conf`);
+   - file `upload_test_nghich_luu.zip`.
+2. Mở Terminal và chạy lần lượt:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash   # ~40-60 phút
+   cd /root/AI_Video_Studio && bash run.sh check
+   mkdir -p /workspace/upload && unzip -o /workspace/upload_test_nghich_luu.zip -d /workspace/upload
+   bash run.sh new "Nghịch Lưu Quang Âm" --from /workspace/upload
+   bash run.sh drive nghich_luu_quang_am          # tạo thư mục "Nghịch Lưu Quang Âm" trong folder Drive của bạn
+   bash run.sh run nghich_luu_quang_am --chapters 1
+   ```
+
+**Tắt pod rồi bật lại: chỉ cần 2 lệnh**
+1. Trên RunPod, bấm **Start** pod cũ. Nếu báo hết máy, Deploy pod mới với **cùng volume `ai_video_studio`**: volume Global gắn được với GPU ở mọi vùng.
+2. Mở Jupyter → Terminal và chạy:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash   # ~15-20 phút
+   cd /root/AI_Video_Studio && nohup bash run.sh run nghich_luu_quang_am --stop-pod > /workspace/run.log 2>&1 &
+   ```
+   - Lệnh đầu không tải lại model: nó cài lại Python/ComfyUI rồi chép model từ volume sang ổ nhanh. Volume Global đọc khoảng 170 MB/s nên mất khoảng 10–15 phút.
+   - Lệnh sau tự làm tiếp từ chỗ dừng, bỏ qua các chương đã `.done`.
+
+**Những gì còn và mất khi Stop pod**
+
+| Còn (trên volume `/workspace`) | Mất (ổ container, bootstrap tạo lại) |
+|---|---|
+| Model AI, `rclone.conf`, toàn bộ dự án (chương, bible, ảnh mẫu, cache, trạng thái `.done`) | Code `/root/AI_Video_Studio`, Python venv, ComfyUI, bản chép model trên ổ nhanh |
+
 ## 1. Chọn GPU
 
 ### Bảng hiệu năng các cấu hình đã xem trên RunPod
