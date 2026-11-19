@@ -1,0 +1,46 @@
+extends: _base
+name: "Đô thị Trung Quốc thập niên 1990"
+description: >-
+  Truyện đô thị/trọng sinh lấy bối cảnh Trung Quốc 1990-1999: cải cách mở cửa, xuống biển
+  kinh doanh, nhà máy quốc doanh, khu tập thể, xe đạp, máy nhắn tin BP, đại ca đại.
+default_art_style: cinematic_realistic
+bgm_mood: nostalgic
+
+world_en: "mainland China city in the 1990s, reform-era"
+
+director_rules_en: >-
+  Setting is a mainland Chinese city or county town in the 1990s. Everything must be
+  period-accurate for 1990-1999. If the story mentions a "system" or supernatural ability,
+  show only its real-world effect on people and objects, never a floating interface.
+  No smartphones, flat screens, modern glass skyscrapers, electric scooters or modern cars.
+
+character_rules_en: >-
+  1990s mainland Chinese fashion: white or checked shirts, wool sweaters, green army-style
+  coats, wide trousers, cotton padded jackets in winter, leather jackets for businessmen,
+  simple dresses, permed or short hairstyles, cloth shoes or leather shoes.
+
+location_rules_en: >-
+  Red-brick and grey concrete danwei apartment blocks, tube-style dormitory corridors,
+  state factory gates, narrow alleys, wet markets, small street-side shops with roll-up
+  shutters, county bus stations, old classrooms with wooden desks, simple restaurants.
+
+props_en: >-
+  Flying Pigeon and Phoenix bicycles, three-wheel carts, Xiali and minivan taxis, Santana
+  sedans, CRT televisions, thermos flasks, enamel mugs, rotary landline phones, pagers,
+  brick-sized mobile phones, cassette players, fluorescent tube lights, coal briquette stoves
+
+negative: >-
+  smartphone, touchscreen, flat screen TV, laptop, modern glass skyscraper, LED billboard,
+  electric scooter, shared bicycle, modern SUV, ancient costume, hanfu, fantasy armor, sci-fi
+
+motion_prefix_en: "1990s mainland China city, period-accurate"
+
+context_guards:
+  - pattern: "hệ thống|bảng thuộc tính|nhiệm vụ|ký chủ"
+    en: "the effect shown through the character's focused expression, no interface"
+  - pattern: "nhà máy|xưởng|công nhân"
+    en: "1990s state-owned factory floor, old machinery, workers in blue uniforms"
+  - pattern: "chợ|sạp|buôn bán|bày quán"
+    en: "crowded 1990s Chinese street market, wooden stalls, bicycles parked"
+  - pattern: "điện thoại|gọi điện"
+    en: "1990s landline telephone or brick-sized mobile phone"

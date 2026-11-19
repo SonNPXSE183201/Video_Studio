@@ -1,0 +1,31 @@
+extends: _base
+name: "Linh dị / kinh dị / quỷ dị"
+description: >-
+  Truyện linh dị, ma quỷ, quỷ dị, thám hiểm mộ cổ, trừ tà, quy tắc quái đàm, dân gian
+  Trung Quốc; bối cảnh thường là nông thôn hoặc đô thị hiện đại.
+default_art_style: cinematic_realistic
+bgm_mood: horror
+
+world_en: "Chinese folk horror"
+
+director_rules_en: >-
+  Chinese folk horror atmosphere: suspense through darkness, fog, candlelight and shadows.
+  Ghosts are subtle and uncanny rather than gory. Keep the era consistent with the story.
+
+character_rules_en: "Everyday Chinese clothing matching the story's era; Taoist robes for exorcists."
+
+location_rules_en: >-
+  Old rural villages, ancestral halls, abandoned houses, graveyards, ancient tombs,
+  dim hospital corridors, night streets, misty forests.
+
+props_en: "paper talismans, candles, incense, bronze coins, peach-wood swords, red strings, paper effigies"
+
+negative: "bright cheerful lighting, cartoon, excessive gore, sci-fi"
+
+motion_prefix_en: "eerie Chinese folk horror atmosphere, dim light"
+
+context_guards:
+  - pattern: "quỷ|ma|hồn|oán"
+    en: "pale ghostly figure half hidden in darkness, uncanny stillness"
+  - pattern: "mộ|lăng|quan tài"
+    en: "ancient tomb chamber, stone coffin, flickering torchlight"

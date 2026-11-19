@@ -1,0 +1,35 @@
+extends: _base
+name: "Lịch sử / cổ đại / cung đấu / ngôn tình cổ trang"
+description: >-
+  Bối cảnh cổ đại không có tu tiên: triều đình, hoàng cung, phủ đệ, quân đội, cung đấu,
+  trạch đấu, ngôn tình cổ đại, xuyên không về cổ đại, làm ruộng cổ đại.
+default_art_style: cinematic_realistic
+bgm_mood: guzheng_drama
+
+world_en: "ancient imperial China, historical drama"
+
+director_rules_en: >-
+  Grounded historical Chinese drama. No magic, no flying, no glowing qi unless the text
+  is explicitly supernatural. No modern objects.
+
+character_rules_en: >-
+  Historically inspired hanfu by rank: officials in court robes and hats, nobles in silk,
+  servants and farmers in plain linen, soldiers in lamellar armor; period hairstyles.
+
+location_rules_en: >-
+  Imperial palaces, red walls and gold roofs, noble mansions with courtyards and gardens,
+  county yamen, rural villages, farmland, inns, city gates.
+
+props_en: "candles, oil lamps, scrolls, tea sets, folding screens, carriages, horses, swords"
+
+negative: >-
+  modern clothing, phones, cars, electronics, guns, glowing magic, fantasy creatures,
+  western armor, sci-fi
+
+motion_prefix_en: "historical Chinese drama"
+
+context_guards:
+  - pattern: "hoàng thượng|bệ hạ|triều đình|thượng triều"
+    en: "imperial throne hall, officials in court robes"
+  - pattern: "ruộng|trồng trọt|thu hoạch"
+    en: "ancient Chinese farmland, farmers with hoes and baskets"

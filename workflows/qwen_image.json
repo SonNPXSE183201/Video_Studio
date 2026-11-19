@@ -1,0 +1,33 @@
+{
+  "_meta": "Qwen-Image text-to-image (ComfyUI native). Placeholder lấy từ settings.yaml > image.qwen_image",
+  "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "{{unet}}", "weight_dtype": "default"}},
+  "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "{{clip}}", "type": "qwen_image", "device": "default"}},
+  "3": {"class_type": "VAELoader", "inputs": {"vae_name": "{{vae}}"}},
+  "4": {
+    "_optional": "lora",
+    "_passthrough": "model",
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {"model": ["1", 0], "lora_name": "{{lora}}", "strength_model": "{{lora_strength}}"}
+  },
+  "5": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["4", 0], "shift": "{{shift}}"}},
+  "6": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": "{{positive}}"}},
+  "7": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": "{{negative}}"}},
+  "8": {"class_type": "EmptySD3LatentImage", "inputs": {"width": "{{width}}", "height": "{{height}}", "batch_size": 1}},
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["5", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["8", 0],
+      "seed": "{{seed}}",
+      "steps": "{{steps}}",
+      "cfg": "{{cfg}}",
+      "sampler_name": "{{sampler}}",
+      "scheduler": "{{scheduler}}",
+      "denoise": 1.0
+    }
+  },
+  "10": {"class_type": "VAEDecode", "inputs": {"samples": ["9", 0], "vae": ["3", 0]}},
+  "11": {"class_type": "SaveImage", "inputs": {"images": ["10", 0], "filename_prefix": "AIStudio"}}
+}

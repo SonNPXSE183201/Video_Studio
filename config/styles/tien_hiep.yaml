@@ -1,0 +1,46 @@
+extends: _base
+name: "Tiên hiệp / tu tiên cổ đại"
+description: >-
+  Tu tiên, tu chân, luyện khí, trúc cơ, kim đan, tông môn, linh thạch, pháp bảo, phi kiếm,
+  thế giới cổ đại Trung Hoa có tu sĩ. Ancient Chinese xianxia cultivation world.
+default_art_style: 3d_donghua
+bgm_mood: epic_chinese
+
+world_en: "ancient Chinese xianxia cultivation world, pre-industrial"
+
+director_rules_en: >-
+  Ancient Chinese cultivation world with no modern technology. Visualize abstract novel
+  mechanics (system panels, levels, upgrades, cultivation realms) only through their physical
+  ancient-world result: timber and stone buildings, fields, ponds, jade, talismans, mist and
+  restrained glowing qi. Never show game UI, holograms, machines, guns or vehicles.
+
+character_rules_en: >-
+  Clothing is ancient Chinese hanfu, layered cultivator robes, rustic linen for commoners,
+  silk for the wealthy; hair in buns, topknots or long loose hair with hairpins.
+  Never modern, Western, superhero or sci-fi clothing.
+
+location_rules_en: >-
+  Traditional Chinese architecture: timber halls, tiled roofs, courtyards, stone paths,
+  mountain sect pavilions, rustic villages, markets with cloth awnings and lanterns.
+
+props_en: >-
+  jade pendants, flying swords, talisman paper, bronze cauldrons, pill bottles, spirit stones,
+  lanterns, bamboo, ink brushes, wooden carts
+
+negative: >-
+  modern clothing, modern city, cars, phones, electronics, guns, robots, mecha, sci-fi,
+  western knight, plate armor, gothic castle, superhero suit, cape, game UI, hologram
+
+motion_prefix_en: "ancient Chinese xianxia world"
+
+context_guards:
+  - pattern: "hệ thống|nâng cấp|thăng cấp|cấp độ|kiến trúc"
+    en: "the upgraded result shown as tangible timber, stone and tile craftsmanship, no interface"
+  - pattern: "ruộng|nông|trồng|ao cá|chuồng|gà|heo|lợn"
+    en: "rustic ancient Chinese homestead, soil, water, plants, handmade wooden tools"
+  - pattern: "phường thị|chợ|tông môn|tông phái|khách điếm|tửu lâu"
+    en: "bustling traditional Chinese market street, timber shops, cloth awnings, lanterns"
+  - pattern: "pháp bảo|linh thạch|đan dược|phù|trận pháp|phi kiếm"
+    en: "cultivation artifacts of carved jade, bronze and paper talismans with soft qi glow"
+  - pattern: "đánh|chiến|giết|kiếm pháp|chưởng|quyền"
+    en: "grounded wuxia combat pose, flowing sleeves, controlled elemental qi trails"

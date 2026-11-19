@@ -1,0 +1,27 @@
+extends: _base
+name: "Khoa huyễn / tương lai / võng du"
+description: >-
+  Khoa học viễn tưởng, tinh tế, cơ giáp, tương lai, trò chơi thực tế ảo (võng du),
+  công nghệ cao, thành phố tương lai Trung Quốc.
+default_art_style: 3d_donghua
+bgm_mood: electronic_epic
+
+world_en: "futuristic Chinese sci-fi world"
+
+director_rules_en: >-
+  Futuristic Chinese science fiction. Technology, mechs, spaceships and holograms are allowed
+  when the text supports them, but keep designs coherent and readable. Avoid readable text.
+
+character_rules_en: "Futuristic functional clothing, pilot suits, tech jackets, armor when in combat."
+
+location_rules_en: "Futuristic megacities, spaceship interiors, labs, virtual game worlds."
+
+props_en: "mechs, starships, holographic displays without text, energy weapons, drones"
+
+negative: "ancient costume, hanfu, medieval, rustic village"
+
+motion_prefix_en: "futuristic sci-fi world"
+
+context_guards:
+  - pattern: "trò chơi|game|võng du|thực tế ảo"
+    en: "immersive fantasy game world rendered realistically"

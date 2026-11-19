@@ -1,0 +1,40 @@
+# Phần dùng chung cho mọi thể loại. File thể loại khai báo `extends: _base`.
+
+default_art_style: cinematic_realistic
+bgm_mood: neutral
+
+director_rules_en: ""
+character_rules_en: "Clothing must fit the story's world and era."
+location_rules_en: "Describe concrete architecture, materials, light and weather."
+props_en: ""
+
+negative: >-
+  text, letters, subtitles, caption, watermark, logo, signature, readable signage,
+  lowres, blurry, jpeg artifacts, worst quality
+
+anatomy_negative: >-
+  duplicate person, clones, identical faces, extra heads, extra faces, floating head,
+  severed head, extra limbs, extra fingers, mutated hands, bad anatomy, deformed body, merged bodies
+
+motion_negative: >-
+  static image, frozen frame, flicker, morphing face, identity change, clothing change,
+  sudden scene cut, new person appearing, duplicate person, warped limbs, text, watermark
+
+population_negative:
+  none: "person, people, human, human face, portrait, body, silhouette"
+  single: "two people, multiple people, group, crowd, background people, twins"
+  pair: "single person, three people, group, crowd, background people"
+  group: "empty scene, repeated face, identical outfits"
+  crowd: "empty scene, repeated face, identical outfits"
+
+shot_framing:
+  close_up: "close-up shot, expressive face, shallow depth of field"
+  medium_shot: "medium shot, waist-up framing, readable gesture"
+  wide_shot: "wide establishing shot, full environment visible, layered depth"
+  action_shot: "dynamic action composition, readable motion, grounded anatomy"
+  over_shoulder: "over-the-shoulder shot, conversation framing"
+  insert: "detailed insert shot of an object, macro detail"
+
+# Biến khái niệm trừu tượng trong truyện thành hình ảnh cụ thể.
+# pattern là regex (tiếng Việt, không phân biệt hoa thường) trên đoạn văn của cảnh.
+context_guards: []

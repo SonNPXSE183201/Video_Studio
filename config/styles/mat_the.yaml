@@ -1,0 +1,33 @@
+extends: _base
+name: "Mạt thế / tận thế / zombie"
+description: >-
+  Tận thế, zombie (tang thi), dị năng giả, căn cứ người sống sót, tích trữ vật tư,
+  thành phố đổ nát hiện đại.
+default_art_style: cinematic_realistic
+bgm_mood: dark_tension
+
+world_en: "post-apocalyptic modern Chinese city"
+
+director_rules_en: >-
+  Post-apocalyptic modern Chinese city: abandoned streets, survivors, zombies, makeshift
+  bases. Gore is implied, not graphic. Superpowers appear as grounded elemental effects.
+
+character_rules_en: >-
+  Dirty practical survival clothing: jackets, cargo pants, backpacks, improvised armor,
+  gloves; tired faces.
+
+location_rules_en: >-
+  Ruined streets with abandoned cars, broken shop windows, overgrown plants, fortified
+  apartment blocks, supermarkets, warehouses, survivor camps.
+
+props_en: "machetes, baseball bats, backpacks, canned food, water bottles, flashlights, barricades"
+
+negative: "clean modern city, happy crowd, ancient costume, hanfu, sci-fi spaceship, excessive gore"
+
+motion_prefix_en: "post-apocalyptic city, tense atmosphere"
+
+context_guards:
+  - pattern: "tang thi|zombie|xác sống"
+    en: "pale decayed zombies with torn clothes, horror atmosphere without graphic gore"
+  - pattern: "dị năng|năng lực"
+    en: "grounded elemental power effect around the hand"

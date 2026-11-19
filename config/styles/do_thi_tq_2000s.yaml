@@ -1,0 +1,41 @@
+extends: _base
+name: "Đô thị Trung Quốc thập niên 2000"
+description: >-
+  Truyện đô thị/trọng sinh bối cảnh Trung Quốc 2000-2009: quán net, Nokia, QQ, khu chung cư
+  mới, kinh doanh, đại học, Olympic 2008, bất động sản bùng nổ.
+default_art_style: cinematic_realistic
+bgm_mood: nostalgic
+
+world_en: "mainland China city in the 2000s"
+
+director_rules_en: >-
+  Setting is a mainland Chinese city in 2000-2009. Use period-accurate technology and
+  fashion. A "system" or special ability is never shown as a floating interface; show the
+  real-world result. No modern full-screen smartphones, electric cars or shared bikes.
+
+character_rules_en: >-
+  2000s Chinese fashion: jeans, hoodies, polo shirts, school tracksuit uniforms, puffer
+  jackets, office suits with loose fit, layered hair, simple ponytails, canvas sneakers.
+
+location_rules_en: >-
+  New high-rise residential compounds beside older six-storey blocks, construction cranes,
+  internet cafes with rows of PCs, university dormitories, KTV rooms, small hotpot
+  restaurants, offices with beige computers, train stations crowded with travellers.
+
+props_en: >-
+  Nokia and Motorola candybar or flip phones, CRT and early LCD monitors, desktop PCs,
+  MP3 players, DVD shops, Santana and Jetta taxis, buses, bicycles, early electric bikes
+
+negative: >-
+  modern full-screen smartphone, tablet, shared bicycle, electric car charging, QR code,
+  2020s fashion, ancient costume, hanfu, fantasy armor, sci-fi
+
+motion_prefix_en: "2000s mainland China city, period-accurate"
+
+context_guards:
+  - pattern: "hệ thống|bảng thuộc tính|nhiệm vụ|ký chủ"
+    en: "the effect shown through the character's focused expression, no interface"
+  - pattern: "quán net|net|máy tính|chơi game"
+    en: "2000s Chinese internet cafe, rows of CRT monitors, dim light, cigarette smoke"
+  - pattern: "công ty|văn phòng|họp"
+    en: "2000s office with beige desktop computers and paper files"

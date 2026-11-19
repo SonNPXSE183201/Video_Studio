@@ -1,0 +1,30 @@
+extends: _base
+name: "Đô thị hiện đại (sau 2016)"
+description: >-
+  Truyện đô thị hiện đại không ghi rõ năm hoặc sau 2016: livestream, thanh toán QR, xe điện,
+  showbiz, tổng tài, thần y, chiến thần trở về.
+default_art_style: cinematic_realistic
+bgm_mood: modern_drama
+
+world_en: "contemporary Chinese city"
+
+director_rules_en: >-
+  Contemporary Chinese city. A "system" or special ability is never shown as a floating
+  interface; show the real-world result. Keep the scene grounded and realistic.
+
+character_rules_en: >-
+  Contemporary Chinese fashion appropriate to the character's status: tailored suits,
+  casual streetwear, dresses, uniforms of doctors, police, students.
+
+location_rules_en: >-
+  Modern skyscrapers, apartments, malls, hospitals, restaurants, villas, highways, night city.
+
+props_en: "smartphones, laptops, electric cars, sedans, coffee, documents"
+
+negative: "ancient costume, hanfu, fantasy armor, sci-fi, futuristic city, hologram"
+
+motion_prefix_en: "contemporary Chinese city, realistic"
+
+context_guards:
+  - pattern: "hệ thống|bảng thuộc tính|nhiệm vụ|ký chủ"
+    en: "the effect shown through the character's focused expression, no interface"

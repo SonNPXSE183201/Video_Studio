@@ -1,0 +1,7 @@
+# Thư viện điều khiển pipeline (máy local hoặc studio venv trên pod).
+# Trên RunPod, pod/setup_pod.sh cài thêm: torch, omnivoice, transformers, accelerate.
+pyyaml>=6.0
+requests>=2.31.0
+numpy>=1.24
+soundfile>=0.12.1
+pillow>=10.0.0

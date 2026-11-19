@@ -1,0 +1,38 @@
+extends: _base
+name: "Đô thị Trung Quốc 2010-2015"
+description: >-
+  Truyện đô thị bối cảnh Trung Quốc 2010-2015: smartphone đời đầu, WeChat, tàu điện ngầm,
+  trung tâm thương mại, cao ốc kính, khởi nghiệp, showbiz, tổng tài.
+default_art_style: cinematic_realistic
+bgm_mood: modern_drama
+
+world_en: "mainland China megacity in the early 2010s"
+
+director_rules_en: >-
+  Setting is a mainland Chinese city in 2010-2015. Use early-2010s technology and fashion.
+  A "system" or special ability is never shown as a floating interface; show the real-world
+  result. No shared bikes, foldable phones, face masks or 2020s electric cars.
+
+character_rules_en: >-
+  Early-2010s Chinese fashion: slim suits, white shirts, trench coats, skinny jeans,
+  knit sweaters, dresses, school uniforms (tracksuits), neat modern hairstyles.
+
+location_rules_en: >-
+  Glass office towers, shopping malls, metro stations, upscale apartments, cafes, luxury
+  hotels, university campuses, hospital corridors, busy streets with taxis at night.
+
+props_en: >-
+  early touchscreen smartphones, laptops, flat screen TVs, sedans and taxis, metro trains,
+  high-speed rail, coffee cups, shopping bags, business documents
+
+negative: >-
+  shared bicycle, foldable phone, face mask, 2020s electric car, hologram, ancient costume,
+  hanfu, fantasy armor, sci-fi, futuristic city
+
+motion_prefix_en: "early 2010s Chinese city, realistic"
+
+context_guards:
+  - pattern: "hệ thống|bảng thuộc tính|nhiệm vụ|ký chủ"
+    en: "the effect shown through the character's focused expression, no interface"
+  - pattern: "tổng tài|tập đoàn|công ty|họp"
+    en: "modern corporate office in a glass tower, city skyline through windows"

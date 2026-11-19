@@ -1,0 +1,55 @@
+# ==========================================================================
+# PHONG CÁCH VẼ - độc lập với thể loại. Chọn trong series.yaml (art_style).
+# positive/negative được ghép vào mọi prompt ảnh; sdxl_* chỉ dùng khi
+# image.workflow = sdxl.
+# ==========================================================================
+
+3d_donghua:
+  name: "Hoạt hình 3D Trung Quốc (donghua)"
+  positive: >-
+    premium Chinese 3D animation film still, donghua CGI, stylized realistic 3D characters,
+    physically based materials, detailed hair and fabric, cinematic lighting, depth of field
+  negative: >-
+    2D anime, cel shading, manga, flat illustration, sketch, live-action photograph,
+    western cartoon, chibi, plastic toy look
+  motion_style: "3D animated film, smooth CGI motion"
+  sdxl_checkpoint: ""
+  sdxl_lora: "3d_render_style_xl.safetensors"
+  sdxl_lora_strength: 0.8
+
+cinematic_realistic:
+  name: "Điện ảnh tả thực"
+  positive: >-
+    cinematic film still, photorealistic, shot on 35mm, natural skin texture, realistic lighting,
+    subtle film grain, East Asian actors, authentic production design
+  negative: >-
+    cartoon, anime, 3D render, CGI, painting, illustration, plastic skin, doll face,
+    oversaturated, HDR halo
+  motion_style: "live-action film footage, natural camera movement"
+  sdxl_checkpoint: ""
+  sdxl_lora: ""
+  sdxl_lora_strength: 0.0
+
+anime_cn:
+  name: "Anime Trung Quốc 2D"
+  positive: >-
+    high quality Chinese anime illustration, clean line art, soft cel shading,
+    detailed painted background, cinematic composition
+  negative: >-
+    photograph, live action, 3D render, western cartoon, chibi, sketch, monochrome
+  motion_style: "2D anime animation, smooth limited animation"
+  sdxl_checkpoint: ""
+  sdxl_lora: ""
+  sdxl_lora_strength: 0.0
+
+ink_painting:
+  name: "Thủy mặc cổ phong"
+  positive: >-
+    Chinese ink wash painting style with soft color, elegant brush strokes, xuan paper texture,
+    atmospheric negative space, refined guofeng illustration
+  negative: >-
+    photograph, 3D render, western cartoon, neon colors, harsh outlines
+  motion_style: "animated ink painting, gentle flowing motion"
+  sdxl_checkpoint: ""
+  sdxl_lora: ""
+  sdxl_lora_strength: 0.0

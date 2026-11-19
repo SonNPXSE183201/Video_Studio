@@ -1,0 +1,28 @@
+# Bí mật
+rclone.conf
+*.conf
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Dữ liệu từng bộ truyện (chương, bible, ảnh, video) không đưa lên git
+/projects/
+*.part
+*.tmp
+*.tmp.wav
+*.tmp.mp4
+
+# Media lớn người dùng tự thêm
+assets/bgm/**/*.mp3
+assets/bgm/**/*.wav
+assets/bgm/**/*.m4a
+assets/fonts/*.ttf
+assets/fonts/*.otf
+
+# Hệ điều hành
+.DS_Store
+Thumbs.db

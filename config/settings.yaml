@@ -1,0 +1,198 @@
+# ==============================================================================
+# CẤU HÌNH CHUNG AI_VIDEO_STUDIO
+# Thể loại / phong cách vẽ / giọng đọc của từng bộ truyện nằm trong
+# projects/<du_an>/series.yaml (tool tự điền khi chạy lần đầu).
+# ==============================================================================
+
+paths:
+  projects_dir: "projects"
+
+# --- LLM đạo diễn + model thị giác kiểm tra ảnh (chạy local trong Ollama) ---
+ollama:
+  host: "http://127.0.0.1:11434"
+  model: "qwen2.5:14b"          # VRAM >= 24GB có thể dùng "qwen2.5:32b" để hiểu truyện tốt hơn
+  vision_model: "qwen2.5vl:7b"  # dùng cho QA ảnh và chọn ảnh casting
+  temperature: 0.2
+  timeout_seconds: 300
+  retries: 2
+  num_ctx: 16384                # Ollama mặc định chỉ 2048-4096 token -> prompt dài bị cắt
+
+director:
+  analysis_chapters: 3          # số chương đầu dùng để nhận diện thể loại/thời đại
+  analysis_sample_chars: 6000
+  character_scan_chars: 9000    # cửa sổ quét Story Bible
+  scene_target_chars: 230       # ~14-16 giây lời đọc mỗi cảnh
+  scene_max_chars: 360
+  batch_size: 6                 # số cảnh mỗi lần gọi LLM
+  max_visible_characters: 2
+  allow_crowds: false
+
+# --- Giọng đọc OmniVoice ---
+tts:
+  model_id: "k2-fsa/OmniVoice"  # có thể thử bản fine-tune tiếng Việt: termanteus/omnivoice-vietnamese
+  sample_rate: 24000
+  speed: 1.0
+  num_step: 32                  # 16 nhanh hơn, 48-64 mượt hơn
+  guidance_scale: 2.0           # 2.5-3.0 bám giọng mẫu chặt hơn
+  seed: 1234                    # seed cố định -> ngữ điệu ổn định giữa các câu
+  max_chars: 160                # chunk ngắn giảm nuốt chữ
+  merge_sentences: true
+  trim_silence_db: -42          # cắt khoảng lặng TTS tự sinh
+  lead_ms: 30
+  tail_ms: 60
+  fade_ms: 10
+  pauses_ms:                    # nhịp nghỉ sau chunk theo dấu câu
+    comma: 150
+    sentence: 300
+    question: 380
+    ellipsis: 520
+    paragraph: 600
+    dialogue: 680
+    title: 1200
+
+# --- Nghe lại bằng ASR để bắt lỗi vấp/nuốt chữ ---
+asr:
+  enabled: true
+  model_id: "vinai/PhoWhisper-large"
+  max_cer: 0.15                 # tỷ lệ sai ký tự tối đa (tên riêng Hán Việt làm CER cao hơn thực tế)
+  max_attempts: 3
+  cps_min: 7                    # ký tự/giây: thấp hơn = kéo dài/lặp, cao hơn = nuốt chữ
+  cps_max: 28
+
+# --- Tạo ảnh qua ComfyUI ---
+comfyui:
+  host: "http://127.0.0.1:8188"
+  timeout_seconds: 600
+
+image:
+  workflow: "qwen_image"        # qwen_image | sdxl | đường dẫn workflow API JSON tự xuất từ ComfyUI
+  edit_workflow: "qwen_image_edit"   # giữ mặt nhân vật từ ảnh mẫu; để "" để tắt
+  use_reference_edit: true
+  width: 1664
+  height: 928
+  qwen_image:
+    unet: "qwen_image_fp8_e4m3fn.safetensors"
+    clip: "qwen_2.5_vl_7b_fp8_scaled.safetensors"
+    vae: "qwen_image_vae.safetensors"
+    lora: "Qwen-Image-Lightning-8steps-V1.0.safetensors"   # "" = không dùng Lightning (khi đó steps 20-30, cfg 2.5)
+    lora_strength: 1.0
+    shift: 3.1
+    steps: 8
+    cfg: 1.0
+    sampler: "euler"
+    scheduler: "simple"
+  qwen_image_edit:
+    unet: "qwen_image_edit_2509_fp8_e4m3fn.safetensors"
+    clip: "qwen_2.5_vl_7b_fp8_scaled.safetensors"
+    vae: "qwen_image_vae.safetensors"
+    lora: ""
+    lora_strength: 1.0
+    shift: 3.0
+    steps: 20
+    cfg: 2.5
+    sampler: "euler"
+    scheduler: "simple"
+  sdxl:                          # dự phòng khi pod thiếu model Qwen
+    checkpoint: "sd_xl_base_1.0.safetensors"
+    width: 1344
+    height: 768
+    steps: 30
+    cfg: 6.0
+    sampler: "dpmpp_2m"
+    scheduler: "karras"
+
+# --- Tự kiểm tra ảnh bằng model thị giác, ảnh lỗi được vẽ lại ---
+qa:
+  enabled: true
+  min_score: 6
+  max_rounds: 2
+  reject_text: true
+
+# --- Tự sinh ảnh mẫu khuôn mặt cho nhân vật quan trọng ---
+casting:
+  enabled: true
+  candidates: 3
+  min_mentions: 2
+  min_scenes: 2
+  max_per_chapter: 6
+
+# --- Chuyển động image-to-video (Wan 2.2) ---
+motion:
+  enabled: true
+  model: "wan22_5b"             # wan22_5b | wan22_14b (đẹp hơn, cần VRAM lớn, xem README)
+  ratio: 0.25                   # tỷ lệ cảnh có chuyển động; còn lại dùng Ken Burns
+  min_priority: 1
+  frames: 97                    # ~4 giây @24fps
+  fps: 24
+  timeout_seconds: 1500
+  wan22_5b:
+    diffusion_model: "wan2.2_ti2v_5B_fp16.safetensors"
+    text_encoder: "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    vae: "wan2.2_vae.safetensors"
+    width: 1024
+    height: 576
+    steps: 20
+    cfg: 5.0
+    shift: 8.0
+    sampler: "uni_pc"
+    scheduler: "simple"
+  wan22_14b:
+    high_noise_model: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+    low_noise_model: "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+    high_noise_lora: "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+    low_noise_lora: "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
+    text_encoder: "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    vae: "wan_2.1_vae.safetensors"
+    width: 1280
+    height: 720
+    steps: 4
+    split_step: 2
+    cfg: 1.0
+    shift: 5.0
+    sampler: "euler"
+    scheduler: "simple"
+
+# --- Dựng phim ---
+video:
+  fps: 30
+  resolution: [1920, 1080]
+  encoder: "auto"               # auto (NVENC nếu có) | libx264
+  cq: 20                        # chất lượng NVENC (thấp = đẹp hơn)
+  crf: 20                       # chất lượng libx264
+  x264_preset: "medium"
+  transition_sec: 0.5           # crossfade giữa các cảnh
+  motion_max_slowdown: 1.4      # kéo chậm clip AI tối đa 1.4 lần, phần dư dùng Ken Burns
+  loudness_lufs: -16
+  ken_burns:
+    zoom: 1.12
+    supersample: 2              # phóng to trước khi zoom để không rung hình
+  bgm:
+    enabled: true
+    dir: "assets/bgm"           # assets/bgm/<bgm_mood>/*.mp3 hoặc assets/bgm/*.mp3
+    volume_db: -22
+  subtitle:
+    enabled: true
+    font_name: "Noto Sans"
+    font_size: 54
+    primary_color: "&H0000FFFF"  # vàng (ASS dạng &HAABBGGRR)
+    outline_color: "&H00000000"
+    outline_width: 3
+    shadow: 1
+    margin_v: 60
+    max_chars_per_line: 42
+    max_lines: 2
+
+episodes:
+  chapters_per_episode: 10      # mặc định; series.yaml có thể ghi đè
+
+# --- Google Drive qua rclone ---
+upload:
+  enabled: true
+  remote_dest: "gdrive:Dự án truyện/AI_Video_Studio_Output"
+  config_path: "rclone.conf"
+  upload_chapters: false        # true: upload cả video từng chương
+  upload_storyboards: true      # upload storyboard + báo cáo để duyệt từ xa
+  delete_local_episode: true    # xóa video tập trên pod sau khi upload thành công
+
+runpod:
+  stop_pod_when_done: false     # true: tự tắt pod khi chạy xong (cần runpodctl)

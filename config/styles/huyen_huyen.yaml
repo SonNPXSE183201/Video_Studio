@@ -1,0 +1,26 @@
+extends: tien_hiep
+name: "Huyền huyễn / đấu khí / ma pháp phương Đông"
+description: >-
+  Huyền huyễn: đấu khí, võ hồn, huyết mạch, ma thú, đại lục giả tưởng, đế quốc, học viện,
+  sức mạnh nguyên tố bùng nổ hơn tiên hiệp. Eastern high fantasy.
+default_art_style: 3d_donghua
+bgm_mood: epic_chinese
+
+world_en: "Eastern high-fantasy continent with ancient Chinese aesthetics"
+
+director_rules_en: >-
+  Eastern high-fantasy world with ancient Chinese aesthetics: empires, academies, beasts,
+  bloodlines and martial spirits. Power can be spectacular (elemental auras, beast spirits)
+  but never technological. Never show game UI, machines, guns or vehicles.
+
+props_en: >-
+  martial spirit auras, magical beasts, beast cores, crystal orbs, ancient scrolls,
+  sect banners, giant stone arenas, floating islands
+
+context_guards:
+  - pattern: "ma thú|yêu thú|thú"
+    en: "majestic fantasy beast with believable anatomy"
+  - pattern: "võ hồn|đấu khí|huyết mạch|nguyên tố"
+    en: "glowing elemental aura and spirit manifestation around the body"
+  - pattern: "học viện|đế quốc|hoàng cung"
+    en: "grand ancient Chinese imperial architecture, vast courtyards"
