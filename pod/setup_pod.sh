@@ -154,7 +154,8 @@ apt-get install -y --no-install-recommends \
   rclone unzip wget zstd fontconfig fonts-noto-core fonts-dejavu-core
 
 log "2/8 - Tạo môi trường Python trên container disk"
-python3 -m pip install --upgrade virtualenv
+# Ubuntu 24.04 (PEP 668) chặn pip vào Python hệ thống -> thử lại với --break-system-packages.
+python3 -m pip install --upgrade virtualenv || \n  python3 -m pip install --break-system-packages --upgrade virtualenv
 create_venv "${STUDIO_VENV}"
 create_venv "${COMFY_VENV}"
 
