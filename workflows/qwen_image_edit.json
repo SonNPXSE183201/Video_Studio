@@ -10,7 +10,7 @@
     "inputs": {"model": ["1", 0], "lora_name": "{{lora}}", "strength_model": "{{lora_strength}}"}
   },
   "5": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["4", 0], "shift": "{{shift}}"}},
-  "20": {"class_type": "LoadImage", "inputs": {"image": "{{ref_image_1}}"}},
+  "20": {"_optional": "ref_image_1", "class_type": "LoadImage", "inputs": {"image": "{{ref_image_1}}"}},
   "21": {"_optional": "ref_image_2", "class_type": "LoadImage", "inputs": {"image": "{{ref_image_2}}"}},
   "6": {
     "class_type": "TextEncodeQwenImageEditPlus",

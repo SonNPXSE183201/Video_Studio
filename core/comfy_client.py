@@ -312,6 +312,11 @@ class ImageGenerator:
                 return self.comfy.run(graph, output_path)
             except Exception as exc:
                 log(f"Giữ mặt bằng ảnh mẫu lỗi ({exc}); vẽ không dùng ảnh mẫu.", "Ảnh")
+        elif self.edit_enabled and self.cfg.get("single_model", True):
+            # Một model cho mọi cảnh: không phải đổi qua lại hai model 20 GB (mỗi lần đổi phải nạp lại từ ổ).
+            name = str(self.cfg.get("edit_workflow"))
+            graph = self._graph(name, self._values(name, positive, negative, seed, []))
+            return self.comfy.run(graph, output_path)
         name = self.active_workflow
         graph = self._graph(name, self._values(name, positive, negative, seed, []))
         return self.comfy.run(graph, output_path)

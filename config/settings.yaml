@@ -70,6 +70,8 @@ image:
   workflow: "qwen_image"        # qwen_image | sdxl | đường dẫn workflow API JSON tự xuất từ ComfyUI
   edit_workflow: "qwen_image_edit"   # giữ mặt nhân vật từ ảnh mẫu; để "" để tắt
   use_reference_edit: true
+  single_model: true            # Qwen-Image-Edit vẽ cả cảnh không có nhân vật: một model duy nhất, không phải nạp lại
+                                # (đo: đổi Qwen-Image <-> Edit mất ~6 phút/lần khi model nằm trên volume mạng)
   width: 1664
   height: 928
   qwen_image:
