@@ -14,6 +14,7 @@ Giá dưới đây là mức tham khảo của Community Cloud và thay đổi t
 | **L4** | 24 GB | ~$0.4/h | ✅ nhưng chậm | Xem mục 1.3 |
 | RTX 3090 / A5000 | 24 GB | ~$0.2–0.3/h | ✅ | Rẻ, tốc độ khá |
 | L40S | 48 GB | ~$0.8–0.9/h | ✅ | Nhanh, sát hoặc vượt ngân sách |
+| **B300 MIG 34GB** | 34 GB | ~$0.50/h | ✅ Đáng thử | Xem mục 1.4: không có NVENC, chỉ 6 vCPU |
 | A100 / H100 | 40–80 GB | — | ❌ Không nên | Không có NVENC, đắt |
 
 **Mọi GPU 24 GB dùng chung một quy tắc.** Giữ nguyên cấu hình mặc định (`ollama.model: qwen2.5:14b`, `motion.model: wan22_5b`) và **không** đặt `INSTALL_WAN14B=1`. Tool chạy từng bước một và giải phóng VRAM giữa các bước, nên 24 GB là đủ.
@@ -41,6 +42,28 @@ MIG là một **lát cắt** của card RTX PRO 6000 96 GB: bạn nhận 24 GB V
 - Công suất chỉ 72 W và băng thông bộ nhớ thấp, nên vẽ ảnh và tạo chuyển động **chậm khoảng 2–3 lần so với RTX 4090**.
 - Tính theo chi phí mỗi chương thì thường thua 4090 / 3090 ở cùng mức giá. Chỉ chọn khi các máy kia hết chỗ.
 - Muốn đỡ chậm, đặt `motion.ratio: 0.15` hoặc `motion.enabled: false` trong `config/settings.yaml`.
+
+### 1.4 B300 MIG 34 GB (~$0.50/h, 71 GB RAM, 6 vCPU): đáng thử
+
+Đây là một lát của card B300, dòng Blackwell Ultra dành cho datacenter.
+
+**Điểm mạnh**
+- **34 GB VRAM** thoải mái hơn các máy 24 GB.
+- **71 GB RAM** dư dùng.
+- Lát MIG có băng thông bộ nhớ cao, nên tốc độ vẽ ảnh dự kiến ngang khoảng RTX 4090. Con số này là ước tính, chưa đo.
+
+**Điểm yếu**
+- **GPU datacenter (B200/B300, giống H100) không có NVENC.** Video phải mã hóa bằng CPU (libx264), mà pod này chỉ có **6 vCPU**, nên khâu dựng phim cuối sẽ là bước chậm nhất.
+  - Cách giảm: trong `config/settings.yaml`, đặt `video.x264_preset: veryfast` (chất lượng gần như không đổi ở `crf: 20`).
+  - Có thể giảm thêm bằng `video.ken_burns.supersample: 1`.
+- **Rủi ro tương thích:** B300 là GPU rất mới (kiến trúc sm_103).
+  - `setup.sh` có kiểm tra PyTorch và chạy thử một phép tính trên GPU.
+  - Nếu báo `no kernel image` hoặc Ollama không nhận GPU (xem `ollama.log`), đổi sang máy khác.
+- **Kiểm tra CPU ngay khi vào pod:** chạy `uname -m`. Nếu ra `aarch64`, máy dùng CPU ARM (GB300). Script có hỗ trợ ARM, nhưng một số thư viện Python có thể thiếu bản dựng sẵn; gặp lỗi khi cài thì đổi máy.
+
+**Cấu hình nên dùng**
+- Giữ mặc định: `qwen2.5:14b`, `wan22_5b`.
+- Có thể thử `INSTALL_WAN14B=1`, nhưng 34 GB khá sát; nếu báo hết VRAM thì quay về `wan22_5b`.
 
 ### Cách so sánh thực tế
 

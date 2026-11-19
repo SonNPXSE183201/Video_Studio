@@ -269,7 +269,13 @@ ok = tuple(map(int, parts[:2])) >= (2, 7)
 if ok and torch.cuda.is_available():
     major, minor = torch.cuda.get_device_capability(0)
     arch = f"sm_{major}{minor}"
-    if arch not in torch.cuda.get_arch_list():
+    # Kernel sm_X.y chạy được trên GPU X.z (z >= y), ví dụ sm_100 chạy trên B300 (sm_103).
+    compatible = False
+    for a in torch.cuda.get_arch_list():
+        digits = "".join(ch for ch in a.split("_", 1)[-1] if ch.isdigit())
+        if len(digits) >= 2 and int(digits[:-1]) == major and int(digits[-1]) <= minor:
+            compatible = True
+    if not compatible:
         print(f"[INFO] PyTorch {torch.__version__} thiếu kernel {arch} cho GPU này")
         ok = False
 raise SystemExit(0 if ok else 1)
