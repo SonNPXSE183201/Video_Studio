@@ -459,7 +459,7 @@ LOCAL_COMFY_MODELS="${LOCAL_RUNTIME_DIR}/models/comfyui"
 if [[ "${LOCAL_MODEL_CACHE:-1}" != "0" ]]; then
   log "Chép model hay dùng sang ổ container (đọc nhanh hơn volume)"
   mkdir -p "${LOCAL_COMFY_MODELS}"
-  reserve=$((15 * 1024 * 1024 * 1024))
+  reserve=$(( ${LOCAL_MODEL_CACHE_RESERVE_GB:-8} * 1024 * 1024 * 1024 ))   # chừa lại cho output/cache
   mapfile -t model_files < <(
     cd "${COMFY_MODELS}" && {
       ls -1 text_encoders/qwen_2.5_vl* diffusion_models/qwen_image_fp8* vae/qwen_image* loras/Qwen-Image* \
