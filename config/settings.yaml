@@ -26,6 +26,8 @@ director:
   batch_size: 6                 # số cảnh mỗi lần gọi LLM
   max_visible_characters: 2
   allow_crowds: false
+  auto_era: true                # truyện đô thị nhắc nhiều năm thuộc thập kỷ khác -> tự đổi preset chương đó
+                                # (bị tắt khi series.yaml có genre_by_chapter)
 
 # --- Giọng đọc OmniVoice ---
 tts:

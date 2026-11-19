@@ -26,6 +26,7 @@ Mỗi bước có cache riêng: chạy lại chỉ làm phần thay đổi; pod 
 tien_hiep          Tiên hiệp / tu tiên cổ đại          (mặc định vẽ: hoạt hình 3D)
 huyen_huyen        Huyền huyễn / đấu khí               (3D)
 lich_su_co_dai     Lịch sử / cung đấu / ngôn tình cổ    (điện ảnh)
+do_thi_tq_1980s    Trung Quốc thập niên 1980 (niên đại) (điện ảnh)
 do_thi_tq_1990s    Đô thị Trung Quốc thập niên 1990     (điện ảnh)
 do_thi_tq_2000s    Đô thị Trung Quốc thập niên 2000     (điện ảnh)
 do_thi_tq_2010s    Đô thị Trung Quốc 2010-2015          (điện ảnh)
@@ -35,7 +36,26 @@ linh_di            Linh dị / kinh dị                    (điện ảnh)
 khoa_huyen         Khoa huyễn / tương lai               (3D)
 ```
 
-Phong cách vẽ: `3d_donghua`, `cinematic_realistic`, `anime_cn`, `ink_painting`. Thêm thể loại mới: chép một file trong `config/styles/` và sửa.
+**Chủ đề cộng thêm** (`themes` trong `series.yaml`, chọn nhiều được, tool tự nhận diện):
+
+```
+kinh_doanh    Kinh doanh / trọng sinh làm giàu / thương chiến  (đàm phán, cửa tiệm, nhà xưởng, chứng khoán)
+quan_truong   Quan trường / chính trường                       (họp thường vụ, văn phòng, kỷ ủy, tiệc rượu)
+dau_tri       Đấu trí / mưu lược / trinh thám                  (ánh mắt tính toán, đối chất, ánh sáng tương phản)
+```
+
+Ví dụ truyện trọng sinh làm quan + kinh doanh bắt đầu năm 1984: `genre: do_thi_tq_1980s`, `themes: [quan_truong, kinh_doanh, dau_tri]`.
+
+**Truyện kéo dài nhiều thập kỷ:** tool đếm các năm được nhắc trong từng chương ("năm 2003", "cuối năm 2006"...). Nếu chương đã sang thập kỷ khác, tool tự dùng preset đúng thời đại cho chương đó và ghi vào báo cáo. Muốn cố định thì khai báo:
+
+```yaml
+genre_by_chapter:
+  "1-150": do_thi_tq_1990s
+  "151-400": do_thi_tq_2000s
+  "401-": do_thi_tq_2010s
+```
+
+Phong cách vẽ: `3d_donghua`, `cinematic_realistic`, `anime_cn`, `ink_painting`. Thêm thể loại mới: chép một file trong `config/styles/`; thêm chủ đề mới: chép một file trong `config/themes/`.
 
 ## Sử dụng trên RunPod
 

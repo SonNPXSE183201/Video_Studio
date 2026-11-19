@@ -3,8 +3,14 @@ import re
 from typing import Any, Dict, List, Tuple
 
 from core.ollama_client import OllamaClient
-from core.style import list_art_styles, list_styles, load_style
+from core.style import list_art_styles, list_styles, list_themes, load_style
 from core.utils import log
+
+THEME_RULES: List[Tuple[str, str]] = [
+    (r"kiếm tiền|mở tiệm|cửa hàng|nhà xưởng|hợp đồng|đầu tư|cổ phiếu|làm ăn|buôn bán|công ty", "kinh_doanh"),
+    (r"huyện ủy|thị ủy|bí thư|huyện trưởng|thị trưởng|cán bộ|thường vụ|kỷ ủy|thăng chức|chính tích", "quan_truong"),
+    (r"mưu kế|âm mưu|bày bẫy|tính kế|lật kèo|đấu trí|phá án|manh mối", "dau_tri"),
+]
 
 KEYWORD_RULES: List[Tuple[str, str]] = [
     (r"tang thi|zombie|xác sống|mạt thế|tận thế", "mat_the"),
@@ -13,7 +19,8 @@ KEYWORD_RULES: List[Tuple[str, str]] = [
     (r"luyện khí|trúc cơ|kim đan|nguyên anh|linh thạch|tu tiên|tu chân|tông môn|phi kiếm", "tien_hiep"),
     (r"đấu khí|võ hồn|ma thú|đấu giả|huyết mạch|đại lục", "huyen_huyen"),
     (r"bệ hạ|hoàng thượng|triều đình|nương nương|phủ đệ|thái giám|quan phủ", "lich_su_co_dai"),
-    (r"máy nhắn tin|đại ca đại|199\d|xuống biển|nhà máy quốc doanh|tem phiếu", "do_thi_tq_1990s"),
+    (r"tem phiếu|phiếu gạo|công xã|đội sản xuất|thanh niên trí thức|198\d|khôi phục thi đại học", "do_thi_tq_1980s"),
+    (r"máy nhắn tin|đại ca đại|199\d|xuống biển|nhà máy quốc doanh", "do_thi_tq_1990s"),
     (r"quán net|nokia|200\d|olympic", "do_thi_tq_2000s"),
     (r"wechat|weibo|201[0-5]|tàu điện ngầm", "do_thi_tq_2010s"),
     (r"điện thoại|công ty|tổng tài|đại học|xe hơi|livestream", "do_thi_hien_dai"),
@@ -32,11 +39,19 @@ def heuristic_genre(text: str) -> str:
     return max(scores.items(), key=lambda item: item[1])[0]
 
 
+def heuristic_themes(text: str, min_hits: int = 3) -> List[str]:
+    lowered = text.casefold()
+    return [theme for pattern, theme in THEME_RULES if len(re.findall(pattern, lowered)) >= min_hits]
+
+
 def analyze_series(ollama: OllamaClient, samples: List[str], title: str = "") -> Dict[str, Any]:
     styles = list_styles()
     style_ids = [s[0] for s in styles]
     art_ids = list(list_art_styles().keys())
+    themes = list_themes()
+    theme_ids = [t[0] for t in themes]
     catalog = "\n".join(f"- {sid}: {name}. {desc}" for sid, name, desc in styles)
+    catalog += "\n\nTHEMES (optional, any number):\n" + "\n".join(f"- {tid}: {name}. {desc}" for tid, name, desc in themes)
     joined = "\n\n---\n\n".join(samples)
     system = (
         "You are a story analyst for a Vietnamese web-novel video studio. Read the Vietnamese "
@@ -49,7 +64,7 @@ def analyze_series(ollama: OllamaClient, samples: List[str], title: str = "") ->
         "Pick exactly one genre id from GENRE PRESETS. For Chinese urban stories choose the "
         "decade preset from explicit clues (technology, years, prices, events); if unclear use "
         "do_thi_hien_dai. Return:\n"
-        '{"genre":"preset_id","era_en":"e.g. mainland China, 1996","setting_en":"one sentence: '
+        '{"genre":"preset_id","themes":["theme ids that are central to the plot"],"era_en":"e.g. mainland China, 1996","setting_en":"one sentence: '
         'country, era, world type, main places","art_style":"art style id or auto",'
         '"reason_vi":"giải thích ngắn bằng tiếng Việt"}'
     )
@@ -62,8 +77,11 @@ def analyze_series(ollama: OllamaClient, samples: List[str], title: str = "") ->
     art = str(result.get("art_style", "auto")).strip()
     if art not in art_ids:
         art = load_style(genre).get("default_art_style", "cinematic_realistic")
+    raw_themes = result.get("themes") if isinstance(result.get("themes"), list) else None
+    chosen_themes = [str(t) for t in raw_themes if str(t) in theme_ids] if raw_themes is not None else heuristic_themes(joined)
     return {
         "genre": genre,
+        "themes": chosen_themes,
         "art_style": art,
         "era_en": str(result.get("era_en", "")).strip(),
         "setting_en": str(result.get("setting_en", "")).strip(),

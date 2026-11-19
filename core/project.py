@@ -9,13 +9,22 @@ from core.utils import read_json, read_yaml, slugify, write_json, write_yaml
 SERIES_HEADER = """# ==========================================================================
 # HỒ SƠ BỘ TRUYỆN - tool tự điền khi chạy lần đầu (genre/art_style: auto).
 # Muốn đổi thể loại/phong cách: sửa giá trị rồi chạy lại `studio.py run`.
-# Danh sách thể loại: python studio.py styles
+# Danh sách thể loại, chủ đề, phong cách vẽ: python studio.py styles
+#
+# themes: chủ đề cộng thêm vào thể loại, ví dụ [kinh_doanh, quan_truong, dau_tri]
+# genre_by_chapter: đổi thời đại theo chương (truyện trọng sinh kéo dài nhiều năm), ví dụ:
+#   genre_by_chapter:
+#     "1-150": do_thi_tq_1990s
+#     "151-400": do_thi_tq_2000s
+#     "401-": do_thi_tq_2010s
 # ==========================================================================
 """
 
 DEFAULT_SERIES: Dict[str, Any] = {
     "title": "",
     "genre": "auto",
+    "themes": "auto",
+    "genre_by_chapter": {},
     "art_style": "auto",
     "setting_en": "",
     "era_en": "",

@@ -37,4 +37,6 @@ shot_framing:
 
 # Biến khái niệm trừu tượng trong truyện thành hình ảnh cụ thể.
 # pattern là regex (tiếng Việt, không phân biệt hoa thường) trên đoạn văn của cảnh.
+# people: true          -> guard thêm người vào khung hình, chỉ dùng cho cảnh >= 2 người
+# requires_person: true -> chỉ dùng khi cảnh có người
 context_guards: []

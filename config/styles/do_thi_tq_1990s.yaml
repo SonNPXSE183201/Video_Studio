@@ -5,6 +5,7 @@ description: >-
   kinh doanh, nhà máy quốc doanh, khu tập thể, xe đạp, máy nhắn tin BP, đại ca đại.
 default_art_style: cinematic_realistic
 bgm_mood: nostalgic
+years: [1990, 1999]
 
 world_en: "mainland China city in the 1990s, reform-era"
 
@@ -40,7 +41,9 @@ context_guards:
     en: "the effect shown through the character's focused expression, no interface"
   - pattern: "nhà máy|xưởng|công nhân"
     en: "1990s state-owned factory floor, old machinery, workers in blue uniforms"
+    people: true
   - pattern: "chợ|sạp|buôn bán|bày quán"
     en: "crowded 1990s Chinese street market, wooden stalls, bicycles parked"
+    people: true
   - pattern: "điện thoại|gọi điện"
     en: "1990s landline telephone or brick-sized mobile phone"

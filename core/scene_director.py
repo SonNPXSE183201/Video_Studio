@@ -328,10 +328,16 @@ class SceneDirector:
         }
 
     # ------------------------------------------------------- prompt compile
-    def _guards(self, text: str) -> List[str]:
+    def _guards(self, text: str, population: str = "pair") -> List[str]:
         lowered = text.casefold()
         found = []
         for guard in self.style.get("context_guards") or []:
+            # Guard có thêm người (bàn họp, khách hàng...) chỉ dùng cho cảnh nhiều người,
+            # tránh mâu thuẫn với cảnh 1 người / không người.
+            if guard.get("people") and population in ("none", "single"):
+                continue
+            if guard.get("requires_person") and population == "none":
+                continue
             try:
                 if re.search(str(guard.get("pattern", "")), lowered):
                     found.append(str(guard.get("en", "")).strip())
@@ -392,7 +398,7 @@ class SceneDirector:
             if meta.get("mood_en"):
                 light += f", {meta['mood_en']}"
             parts.append(light)
-            parts.extend(self._guards(scene["text"]))
+            parts.extend(self._guards(scene["text"], meta["population_mode"]))
             framing = (self.style.get("shot_framing") or {}).get(meta["shot_type"], "")
             if framing:
                 parts.append(framing)

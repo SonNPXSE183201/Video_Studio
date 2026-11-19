@@ -34,6 +34,41 @@ class StyleTests(unittest.TestCase):
             self.assertTrue(style.get("world_en"), style_id)
             load_art_style(style["default_art_style"])
 
+    def test_themes_add_rules_without_changing_era(self):
+        from core.style import apply_themes, list_themes
+
+        self.assertEqual({"kinh_doanh", "quan_truong", "dau_tri"}, {t[0] for t in list_themes()})
+        style = apply_themes(load_style("do_thi_tq_1980s"), ["quan_truong", "kinh_doanh", "khong_co"])
+        self.assertEqual(["quan_truong", "kinh_doanh"], style["themes"])
+        self.assertIn("1980s", style["director_rules_en"])          # thời đại giữ nguyên
+        self.assertIn("officialdom", style["director_rules_en"])     # luật quan trường được cộng thêm
+        self.assertIn("readable slogans", style["negative"])
+        patterns = " ".join(g["pattern"] for g in style["context_guards"])
+        self.assertIn("thường vụ", patterns)
+        self.assertIn("hợp đồng", patterns)
+        self.assertIn("tem phiếu", patterns)                        # guard gốc của preset vẫn còn
+
+    def test_genre_by_chapter_and_era_detection(self):
+        from core.style import detect_era_genre, genre_for_chapter
+
+        series = {"genre": "do_thi_tq_1990s", "genre_by_chapter": {"1-150": "do_thi_tq_1990s", "151-": "do_thi_tq_2000s"}}
+        self.assertEqual("do_thi_tq_1990s", genre_for_chapter(series, 150))
+        self.assertEqual("do_thi_tq_2000s", genre_for_chapter(series, 151))
+        self.assertEqual("do_thi_tq_1990s", genre_for_chapter({"genre": "do_thi_tq_1990s"}, 999))
+        text = "Năm 2003, công ty lên sàn. Đến năm 2005 doanh thu gấp đôi, cuối năm 2006 mở chi nhánh."
+        self.assertEqual("do_thi_tq_2000s", detect_era_genre(text, "do_thi_tq_1990s")[0])
+        # một lần nhắc hồi tưởng không đủ để đổi thời đại
+        self.assertEqual("", detect_era_genre("Hắn nhớ lại năm 2010 kiếp trước.", "do_thi_tq_1990s")[0])
+        # thể loại không có mốc năm (tiên hiệp) không bị ảnh hưởng
+        self.assertEqual("", detect_era_genre(text, "tien_hiep")[0])
+
+    def test_heuristic_themes(self):
+        from core.series_analyzer import heuristic_themes
+
+        text = "Bí thư huyện ủy triệu tập họp thường vụ. Huyện trưởng phản đối. Kỷ ủy vào cuộc. " * 2
+        self.assertIn("quan_truong", heuristic_themes(text))
+        self.assertEqual("do_thi_tq_1980s", heuristic_genre("Năm 1984, hắn cầm tem phiếu, phiếu gạo ra công xã"))
+
     def test_heuristic_genre(self):
         self.assertEqual("tien_hiep", heuristic_genre("Hắn Luyện Khí tầng hai, có ba khối linh thạch, tông môn"))
         self.assertEqual("do_thi_tq_1990s", heuristic_genre("Năm 1996, hắn cầm máy nhắn tin, đại ca đại"))
@@ -110,6 +145,25 @@ class DirectorTests(unittest.TestCase):
         compiled = director.compile(directed, 1, lambda idx: {"characters": ["Lâm Phong"], "extra_en": "neon rain"})
         self.assertEqual([self.a], compiled[0]["meta"]["visible_character_ids"])
         self.assertIn("neon rain", compiled[0]["positive"])
+
+    def test_people_guards_do_not_conflict_with_population(self):
+        from core.style import apply_themes
+
+        style = apply_themes(load_style("do_thi_tq_1990s"), ["quan_truong", "dau_tri"])
+        responses = [{"scenes": [
+            {"scene_index": 1, "visual_type": "character", "visible_character_ids": [self.a], "subject_en": "a man stands"},
+            {"scene_index": 2, "visual_type": "dialogue", "visible_character_ids": [self.a, self.b], "subject_en": "two talk"},
+            {"scene_index": 3, "visual_type": "environment", "subject_en": "an empty hall"},
+        ]}]
+        director = SceneDirector(FakeOllama(responses), self.chars, self.locs, style, load_art_style("cinematic_realistic"), {}, {})
+        text = "Cuộc họp thường vụ, bí thư tính toán mưu kế."
+        compiled = director.compile(director.direct([{"index": i, "text": text, "chunk_ids": [i]} for i in (1, 2, 3)], 1), 1)
+        single, pair, empty = (c["positive"] for c in compiled)
+        self.assertNotIn("meeting table", single)
+        self.assertIn("calculating eyes", single)
+        self.assertIn("meeting table", pair)
+        self.assertNotIn("calculating eyes", empty)
+        self.assertNotIn("official in a dark jacket", empty)
 
     def test_xianxia_guards(self):
         director = self.director("tien_hiep", [{"scenes": [{"scene_index": 1, "visual_type": "environment", "subject_en": "a fish pond"}]}])

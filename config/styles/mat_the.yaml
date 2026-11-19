@@ -29,5 +29,6 @@ motion_prefix_en: "post-apocalyptic city, tense atmosphere"
 context_guards:
   - pattern: "tang thi|zombie|xác sống"
     en: "pale decayed zombies with torn clothes, horror atmosphere without graphic gore"
+    people: true
   - pattern: "dị năng|năng lực"
     en: "grounded elemental power effect around the hand"

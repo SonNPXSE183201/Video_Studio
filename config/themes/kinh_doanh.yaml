@@ -1,0 +1,36 @@
+name: "Kinh doanh / trọng sinh làm giàu / thương chiến"
+description: >-
+  Nhân vật làm ăn, mở tiệm, xây xưởng, đàm phán, đầu tư, chứng khoán, thương chiến,
+  trọng sinh dùng trí nhớ kiếp trước để làm giàu.
+
+director_rules_en: >-
+  Business story: show deals through people, documents, money, products, shops and
+  factories. Show growth through tangible change (a bigger shop, a new workshop, customers
+  queuing). Knowledge of the future is shown only through the protagonist's confident
+  expression, never as text or interfaces.
+
+props_en: >-
+  contracts and folders, era-appropriate banknotes, ledgers, abacus or calculator,
+  product samples, goods on shelves, delivery tricycles and trucks, shop counters
+
+location_rules_en: >-
+  small family shops, wholesale markets, workshops and factory floors, bank counters,
+  private dining rooms used for negotiation, simple offices.
+
+negative: "readable shop signs, readable documents, logos"
+
+context_guards:
+  - pattern: "hợp đồng|ký kết|đàm phán|thương lượng|hợp tác"
+    en: "negotiation across a table, documents and tea cups, measured expressions"
+    people: true
+  - pattern: "cửa hàng|mở tiệm|cửa tiệm|bày sạp|buôn bán|bán hàng"
+    en: "a busy small shop, goods on shelves, customers at the counter"
+    people: true
+  - pattern: "nhà xưởng|xưởng|nhà máy|dây chuyền|sản xuất"
+    en: "a working factory floor with machines and workers, era-appropriate equipment"
+    people: true
+  - pattern: "cổ phiếu|chứng khoán|đầu tư|cổ phần"
+    en: "a trading hall with price boards (no readable text) and anxious investors"
+    people: true
+  - pattern: "vạn tệ|triệu tệ|kiếm tiền|lợi nhuận|tiền mặt"
+    en: "stacks of era-appropriate banknotes on a table"

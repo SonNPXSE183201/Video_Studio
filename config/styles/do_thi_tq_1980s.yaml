@@ -1,0 +1,46 @@
+extends: _base
+name: "Đô thị / nông thôn Trung Quốc thập niên 1980"
+description: >-
+  Truyện trọng sinh/niên đại văn bối cảnh Trung Quốc 1978-1989: cải cách mở cửa ban đầu,
+  hộ cá thể, tem phiếu, công xã, nhà máy quốc doanh, thanh niên trí thức, thi đại học khôi phục.
+default_art_style: cinematic_realistic
+bgm_mood: nostalgic
+years: [1978, 1989]
+
+world_en: "mainland China in the 1980s, early reform era"
+
+director_rules_en: >-
+  Setting is mainland China in the 1980s (county towns, villages, early city streets).
+  Everything must be period-accurate. A "system" or memories of a past life are never shown
+  as interfaces; show the real-world result. No mobile phones, computers, modern cars,
+  glass towers or bright advertising.
+
+character_rules_en: >-
+  1980s Chinese clothing: Zhongshan (Mao) suits, blue and green cotton work clothes,
+  white shirts, knitted vests, army-green coats, padded cotton jackets, cloth shoes,
+  simple braids and short haircuts; few colors, practical fabrics.
+
+location_rules_en: >-
+  Mud-brick and red-brick village houses, collective courtyards, county streets with
+  low two-storey shops, state-run department stores, grain stations, factory compounds,
+  dirt roads, wheat and rice fields, rural primary schools.
+
+props_en: >-
+  Flying Pigeon bicycles, tractors, ox carts, buses, black-and-white TVs, radios,
+  ration coupons, enamel basins, thermos flasks, kerosene lamps, sewing machines,
+  wristwatches as luxury items, hand-written ledgers
+
+negative: >-
+  mobile phone, smartphone, computer, laptop, flat screen, modern car, glass skyscraper,
+  neon signs, LED screen, modern fashion, ancient costume, hanfu, sci-fi
+
+motion_prefix_en: "1980s mainland China, period-accurate"
+
+context_guards:
+  - pattern: "hệ thống|bảng thuộc tính|nhiệm vụ|ký chủ|kiếp trước|trọng sinh"
+    en: "the protagonist's knowing, determined expression, no interface"
+  - pattern: "tem phiếu|phiếu gạo|phiếu lương"
+    en: "1980s ration coupons and a state shop counter"
+  - pattern: "công xã|đội sản xuất|thu hoạch|cày"
+    en: "1980s Chinese countryside, farmers in work clothes, fields"
+    people: true

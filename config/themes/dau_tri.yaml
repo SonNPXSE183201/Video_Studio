@@ -1,0 +1,23 @@
+name: "Đấu trí / mưu lược / trinh thám"
+description: >-
+  Đấu trí, mưu kế, bày bẫy, lật kèo, tâm lý chiến, trinh thám phá án, đối đầu bằng trí tuệ.
+
+director_rules_en: >-
+  Psychological tension: favor close-ups of eyes and hands, over-the-shoulder confrontations,
+  two people facing each other, reflections and contrasting light. The outcome of a plan is
+  shown through reactions (a smile, a pale face), never through text.
+
+props_en: "chessboard, documents, photographs, cigarettes, tea cups, phones appropriate to the era"
+
+context_guards:
+  - pattern: "mưu|kế hoạch|tính toán|bẫy|gài|lừa|lật kèo|âm mưu"
+    en: "calculating eyes, low-key lighting, deep shadows"
+    requires_person: true
+  - pattern: "đối mặt|đối chất|chất vấn|thẩm vấn"
+    en: "two people facing each other across a table, over-the-shoulder composition"
+    people: true
+  - pattern: "cờ|ván cờ"
+    en: "a chessboard between two players, focused hands"
+    people: true
+  - pattern: "manh mối|chứng cứ|hiện trường|phá án"
+    en: "evidence laid out on a desk under a lamp"

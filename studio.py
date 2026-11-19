@@ -18,7 +18,7 @@ sys.path.insert(0, ROOT)
 
 from core.pipeline import STAGES, Studio  # noqa: E402
 from core.project import Project  # noqa: E402
-from core.style import list_art_styles, list_styles  # noqa: E402
+from core.style import list_art_styles, list_styles, list_themes  # noqa: E402
 from core.utils import format_duration, parse_range, read_json, read_yaml  # noqa: E402
 
 
@@ -96,7 +96,10 @@ def cmd_status(cfg, args) -> None:
     project = open_project(cfg, args.name)
     series = project.load_series()
     print(f"Dự án   : {project.slug}  ({series.get('title')})")
-    print(f"Thể loại: {series.get('genre')} | Vẽ: {series.get('art_style')} | {series.get('era_en', '')}")
+    print(f"Thể loại: {series.get('genre')} | Chủ đề: {series.get('themes') or '-'} | "
+          f"Vẽ: {series.get('art_style')} | {series.get('era_en', '')}")
+    if series.get("genre_by_chapter"):
+        print(f"Theo chương: {series['genre_by_chapter']}")
     chars = read_json(project.characters_path, {}) or {}
     locs = read_json(project.locations_path, {}) or {}
     refs = sum(1 for c in chars.values() if c.get("anh_tham_chieu"))
@@ -126,6 +129,9 @@ def cmd_styles(cfg, args) -> None:
     print("THỂ LOẠI (genre trong series.yaml):")
     for style_id, name, desc in list_styles():
         print(f"  {style_id:<20} {name}")
+    print("\nCHỦ ĐỀ cộng thêm (themes trong series.yaml, chọn nhiều được):")
+    for theme_id, name, desc in list_themes():
+        print(f"  {theme_id:<20} {name}")
     print("\nPHONG CÁCH VẼ (art_style trong series.yaml):")
     for style_id, data in list_art_styles().items():
         print(f"  {style_id:<20} {data.get('name', '')}")

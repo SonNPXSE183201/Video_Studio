@@ -1,0 +1,43 @@
+name: "Quan trường / chính trường"
+description: >-
+  Truyện quan trường: cán bộ, bí thư, huyện trưởng, thị trưởng, thăng chức, phe phái,
+  họp thường vụ, kỷ ủy điều tra, chính tích, phát triển kinh tế địa phương.
+
+director_rules_en: >-
+  Chinese officialdom drama. Power is shown through seating order at meetings, office size,
+  who pours the tea, documents and subtle expressions. Keep it restrained and realistic.
+  Never show readable slogans, banners or nameplates.
+
+props_en: >-
+  long meeting tables with tea cups with lids, folders and reports, desk flags without text,
+  nameplates without readable text, black official sedans appropriate to the era,
+  landline phones on large desks, potted plants
+
+location_rules_en: >-
+  county or city government compounds, party committee offices with large wooden desks,
+  meeting halls with rows of chairs, official guesthouses, banquet rooms with round tables,
+  village committee offices, construction sites being inspected.
+
+character_rules_en: >-
+  Officials wear dark jackets, white shirts, plain suits or Zhongshan suits depending on the
+  era; neat short hair; secretaries carry folders.
+
+negative: "readable slogans, readable banners, readable nameplates, police riot, military parade"
+
+context_guards:
+  - pattern: "huyện ủy|thị ủy|tỉnh ủy|ủy ban|chính phủ|trấn|hương|cục|sở"
+    en: "a government office compound, plain institutional architecture"
+  - pattern: "họp|hội nghị|thường vụ|biểu quyết"
+    en: "officials seated by rank around a long meeting table, tea cups, folders"
+    people: true
+  - pattern: "bí thư|huyện trưởng|thị trưởng|trưởng phòng|cán bộ|lãnh đạo|thư ký"
+    en: "a composed official in a dark jacket behind a large desk"
+    requires_person: true
+  - pattern: "kỷ ủy|điều tra|song quy|tham ô|tố cáo"
+    en: "a tense bare interrogation room, harsh overhead light"
+  - pattern: "tiệc|rượu|mời cơm|chúc rượu"
+    en: "a banquet room, round table with dishes, officials raising small liquor cups"
+    people: true
+  - pattern: "thị sát|khảo sát|công trình|dự án"
+    en: "officials inspecting a site with workers and a secretary holding an umbrella"
+    people: true

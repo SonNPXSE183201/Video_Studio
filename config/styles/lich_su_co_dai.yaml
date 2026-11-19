@@ -31,5 +31,7 @@ motion_prefix_en: "historical Chinese drama"
 context_guards:
   - pattern: "hoàng thượng|bệ hạ|triều đình|thượng triều"
     en: "imperial throne hall, officials in court robes"
+    people: true
   - pattern: "ruộng|trồng trọt|thu hoạch"
     en: "ancient Chinese farmland, farmers with hoes and baskets"
+    people: true

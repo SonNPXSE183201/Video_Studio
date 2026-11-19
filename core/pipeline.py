@@ -17,9 +17,17 @@ from core.motion_client import MotionGenerator
 from core.ollama_client import OllamaClient
 from core.project import Project
 from core.scene_director import SceneDirector
-from core.series_analyzer import analyze_series, heuristic_genre
+from core.series_analyzer import analyze_series, heuristic_genre, heuristic_themes
 from core.storyboard import contact_sheet, thumbnail, write_report
-from core.style import list_styles, load_art_style, load_style
+from core.style import (
+    apply_themes,
+    detect_era_genre,
+    genre_for_chapter,
+    list_styles,
+    list_themes,
+    load_art_style,
+    load_style,
+)
 from core.subtitle import SubtitleGenerator
 from core.text_processor import build_chunks, chapter_title, clean_paragraphs, extract_standardization_table
 from core.tts_engine import TTSEngine
@@ -106,7 +114,7 @@ class Studio:
     def ensure_series(self) -> None:
         series = self.project.load_series()
         valid = {s[0] for s in list_styles()}
-        need_analysis = series.get("genre") in (None, "", "auto") or series.get("art_style") in (None, "", "auto")
+        need_analysis = any(series.get(k) in (None, "", "auto") for k in ("genre", "art_style", "themes"))
         if need_analysis or "analyze" in self.force:
             chapters = self.project.chapter_files()
             if not chapters:
@@ -123,22 +131,49 @@ class Studio:
                 self.ollama.unload_all()
             else:
                 genre = heuristic_genre("\n".join(samples))
-                result = {"genre": genre, "art_style": load_style(genre).get("default_art_style"), "analysis_note": "heuristic (Ollama không chạy)"}
+                result = {"genre": genre, "themes": heuristic_themes("\n".join(samples)),
+                          "art_style": load_style(genre).get("default_art_style"), "analysis_note": "heuristic (Ollama không chạy)"}
             for key, value in result.items():
-                if key in ("genre", "art_style"):
+                if key in ("genre", "art_style", "themes"):
                     if series.get(key) in (None, "", "auto") or "analyze" in self.force:
                         series[key] = value
                 elif value and (not series.get(key) or "analyze" in self.force):
                     series[key] = value
             self.project.save_series(series)
-            log(f"Thể loại: {series['genre']} | Phong cách vẽ: {series['art_style']} | {series.get('era_en', '')}", "Phân tích")
+            log(f"Thể loại: {series['genre']} | Chủ đề: {series.get('themes') or 'không'} | "
+                f"Phong cách vẽ: {series['art_style']} | {series.get('era_en', '')}", "Phân tích")
             if series.get("analysis_note"):
                 log(f"Lý do: {series['analysis_note']}", "Phân tích")
-        if series["genre"] not in valid:
-            raise RuntimeError(f"genre '{series['genre']}' không hợp lệ. Có: {', '.join(sorted(valid))}")
+        if not isinstance(series.get("themes"), list):
+            series["themes"] = [t.strip() for t in str(series.get("themes") or "").split(",") if t.strip() and t.strip() != "auto"]
+        known_themes = {t[0] for t in list_themes()}
+        unknown = [t for t in series["themes"] if t not in known_themes]
+        if unknown:
+            log(f"Bỏ qua chủ đề không tồn tại: {unknown}. Có: {', '.join(sorted(known_themes))}", "Cảnh báo")
+        for genre in [series["genre"], *(series.get("genre_by_chapter") or {}).values()]:
+            if genre not in valid:
+                raise RuntimeError(f"genre '{genre}' không hợp lệ. Có: {', '.join(sorted(valid))}")
         self.series = series
-        self.style = load_style(series["genre"])
+        self.style = apply_themes(load_style(series["genre"]), series["themes"])
         self.art = load_art_style(series["art_style"])
+
+    def _chapter_style(self, number: int, text: str) -> List[str]:
+        """Chọn preset cho chương (genre_by_chapter / tự nhận thời đại) và cộng chủ đề."""
+        notes: List[str] = []
+        genre = genre_for_chapter(self.series, number)
+        suggestion, counts = detect_era_genre(text, genre)
+        if suggestion:
+            auto = bool(self.cfg.get("director", {}).get("auto_era", True)) and not self.series.get("genre_by_chapter")
+            msg = (f"Chương {number} nhắc nhiều năm thuộc '{suggestion}' ({counts}) nhưng đang dùng '{genre}'.")
+            if auto:
+                genre = suggestion
+                msg += f" Tự chuyển sang '{suggestion}' cho chương này."
+            else:
+                msg += " Nếu truyện đã sang thời kỳ mới, thêm genre_by_chapter trong series.yaml."
+            log(msg, "Thời đại")
+            notes.append(msg)
+        self.style = apply_themes(load_style(genre), self.series.get("themes") or [])
+        return notes
 
     def director(self) -> SceneDirector:
         return SceneDirector(self.ollama, self.chars, self.locs, self.style, self.art, self.series, self.cfg.get("director", {}))
@@ -226,6 +261,8 @@ class Studio:
             raise RuntimeError("Chương rỗng sau khi làm sạch.")
         title = chapter_title(paragraphs) or f"Chương {number}"
         log(f"===== CHƯƠNG {number}: {title} =====", "Studio")
+        self.chapter_notes = self._chapter_style(number, "\n".join(paragraphs))
+        log(f"Preset: {self.style['id']}" + (f" + chủ đề {self.style.get('themes')}" if self.style.get("themes") else ""), "Studio")
 
         for item in extract_standardization_table(raw):
             self.chars.upsert_from_analysis({"canonical_name": item["name"], "description_source": item["description"]}, number)
@@ -613,7 +650,8 @@ class Studio:
         cover = next((r["image"] for r in rows if r["image"] and os.path.exists(r["image"]) and not r["qa_failed"]
                       and any(s["index"] == r["index"] and s["meta"]["population_mode"] == "single" for s in compiled)), None)
         thumbnail(cover or (rows[0]["image"] if rows else ""), title, os.path.join(out, "thumbnails", f"Chuong_{number:04d}.jpg"))
-        report = write_report(os.path.join(out, "reports", f"Chuong_{number:04d}.md"), number, title, timeline, rows, [])
+        report = write_report(os.path.join(out, "reports", f"Chuong_{number:04d}.md"), number, title, timeline, rows,
+                              getattr(self, "chapter_notes", []))
         if self.cfg.get("upload", {}).get("upload_storyboards", True):
             for path in (sheet, report):
                 if path and os.path.exists(path):

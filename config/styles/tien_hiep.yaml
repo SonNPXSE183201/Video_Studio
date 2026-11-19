@@ -40,6 +40,7 @@ context_guards:
     en: "rustic ancient Chinese homestead, soil, water, plants, handmade wooden tools"
   - pattern: "phường thị|chợ|tông môn|tông phái|khách điếm|tửu lâu"
     en: "bustling traditional Chinese market street, timber shops, cloth awnings, lanterns"
+    people: true
   - pattern: "pháp bảo|linh thạch|đan dược|phù|trận pháp|phi kiếm"
     en: "cultivation artifacts of carved jade, bronze and paper talismans with soft qi glow"
   - pattern: "đánh|chiến|giết|kiếm pháp|chưởng|quyền"
