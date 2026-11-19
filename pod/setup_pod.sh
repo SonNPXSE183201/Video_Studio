@@ -462,9 +462,14 @@ if [[ "${LOCAL_MODEL_CACHE:-1}" != "0" ]]; then
   reserve=$(( ${LOCAL_MODEL_CACHE_RESERVE_GB:-8} * 1024 * 1024 * 1024 ))   # chừa lại cho output/cache
   mapfile -t model_files < <(
     cd "${COMFY_MODELS}" && {
-      ls -1 text_encoders/qwen_2.5_vl* diffusion_models/qwen_image_fp8* vae/qwen_image* loras/Qwen-Image* \
-        diffusion_models/qwen_image_edit* diffusion_models/wan2.2_ti2v* text_encoders/umt5* vae/wan2.2* \
-        diffusion_models/wan2.2_i2v* loras/wan2.2* vae/wan_2.1* 2>/dev/null || true
+      # Thứ tự ưu tiên (không dùng ls vì ls tự sắp xếp lại): text encoder dùng cho mọi ảnh,
+      # Qwen-Image-Edit vẽ phần lớn cảnh có nhân vật, rồi Qwen-Image, rồi model chuyển động.
+      for pattern in text_encoders/qwen_2.5_vl*.safetensors diffusion_models/qwen_image_edit*.safetensors \
+        diffusion_models/qwen_image_fp8*.safetensors vae/qwen_image*.safetensors loras/Qwen-Image*.safetensors \
+        text_encoders/umt5*.safetensors diffusion_models/wan2.2_ti2v*.safetensors vae/wan2.2*.safetensors \
+        diffusion_models/wan2.2_i2v*.safetensors loras/wan2.2*.safetensors vae/wan_2.1*.safetensors; do
+        for f in ${pattern}; do [[ -f "${f}" ]] && echo "${f}"; done
+      done
       find . -type f -name '*.safetensors' | sed 's|^\./||'
     }
   )
