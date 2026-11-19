@@ -4,6 +4,8 @@ import shutil
 import subprocess
 import time
 import traceback
+
+import numpy as np
 from typing import Any, Dict, List, Optional, Set
 
 from core.asr_checker import ASRChecker
@@ -341,7 +343,8 @@ class Studio:
         # ---------------- 4. chuyển động
         clips: Dict[int, str] = {}
         if self.cfg.get("motion", {}).get("enabled", True):
-            clips = self._render_motion(compiled, durations, number, work, state)
+            clips = self._render_motion(compiled, durations, number, work, state,
+                                        timeline=timeline, chunks=chunks, audio_wav=audio_wav)
         if self.until == "motion":
             self._outputs(number, title, compiled, durations, timeline, state, work, clips)
             return
@@ -388,6 +391,18 @@ class Studio:
             if self.drive.upload(out, f"{self.project.slug}/chapters"):
                 state["chapter_uploaded"] = True
                 self.project.save_chapter_state(number, state)
+
+    @staticmethod
+    def _scene_windows(compiled: List[Dict[str, Any]], timeline: Dict[str, Any]) -> Dict[int, tuple]:
+        """Mốc (bắt đầu, kết thúc) ms của từng cảnh trên trục thời gian audio chương."""
+        durations = Studio._scene_durations(compiled, timeline)
+        windows: Dict[int, tuple] = {}
+        cursor = 0.0
+        for scene in compiled:
+            length = durations[scene["index"]] * 1000.0
+            windows[scene["index"]] = (cursor, cursor + length)
+            cursor += length
+        return windows
 
     @staticmethod
     def _scene_durations(compiled: List[Dict[str, Any]], timeline: Dict[str, Any]) -> Dict[int, float]:
@@ -580,39 +595,99 @@ class Studio:
                 chosen.append(scene["index"])
         return sorted(set(chosen))
 
-    def _render_motion(self, compiled, durations, number: int, work: str, state: Dict[str, Any]) -> Dict[int, str]:
+    @staticmethod
+    def _speech_track(audio_wav: str, window: tuple, speech: List[tuple], out: str, pad_ms: int = 80) -> str:
+        """Cắt audio của cảnh, chỉ giữ các đoạn thoại (dẫn truyện -> im lặng để miệng không mấp máy)."""
+        import soundfile as sf
+
+        samples, sr = sf.read(audio_wav, dtype="float32", always_2d=False)
+        if samples.ndim > 1:
+            samples = samples.mean(axis=1)
+        start = int(window[0] * sr / 1000)
+        end = max(start + 1, int(window[1] * sr / 1000))
+        clip = samples[start:end].copy()
+        mask = np.zeros(clip.shape[0], dtype=bool)
+        for s_ms, e_ms in speech:
+            a = max(0, int((s_ms - window[0] - pad_ms) * sr / 1000))
+            b = min(clip.shape[0], int((e_ms - window[0] + pad_ms) * sr / 1000))
+            if b > a:
+                mask[a:b] = True
+        clip[~mask] = 0.0
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        sf.write(out, clip, sr)
+        return out
+
+    def _render_motion(self, compiled, durations, number: int, work: str, state: Dict[str, Any],
+                       timeline: Optional[Dict[str, Any]] = None, chunks: Optional[List[Dict[str, Any]]] = None,
+                       audio_wav: Optional[str] = None) -> Dict[int, str]:
         motion = self.motion()
-        chosen = self._choose_motion(compiled, durations)
+        mcfg = self.cfg.get("motion", {})
         records: Dict[str, Any] = state.setdefault("motion", {})
         clips: Dict[int, str] = {}
         by_index = {s["index"]: s for s in compiled}
         redo = self.redo_scenes.get(number, set())
         if not motion.ready:
             return clips
+        if str(mcfg.get("coverage", "all")) == "all":
+            chosen = [s["index"] for s in compiled if s.get("motion_override") is not False]
+        else:
+            chosen = self._choose_motion(compiled, durations)
+
+        # Thoại: cảnh có người nói đang ở một mình trong khung -> S2V nhép miệng.
+        lipsync = bool(mcfg.get("lipsync", True)) and motion.s2v_ready and timeline and chunks and audio_wav
+        windows = self._scene_windows(compiled, timeline) if timeline else {}
+        dialogue_ids = {c["id"] for c in (chunks or []) if c.get("dialogue")}
+        times = {c["id"]: (c["start_ms"], c["end_ms"]) for c in (timeline or {}).get("chunks", [])}
+
         self.free_gpu(keep="comfy")
         todo = []
         for index in chosen:
             scene = by_index[index]
+            seconds = durations[index]
+            speech: List[tuple] = []
+            if lipsync and scene.get("speaker_id") and scene["meta"].get("population_mode") == "single":
+                speech = [times[i] for i in scene["chunk_ids"] if i in dialogue_ids and i in times]
+            mode = "s2v" if speech else "i2v"
             clip = os.path.join(work, "motion", f"scene_{index:04d}.mp4")
-            image_fp = state.get("images", {}).get(str(index), {}).get("fp")
-            fp = fingerprint(image_fp, state.get("images", {}).get(str(index), {}).get("attempt"),
-                             scene["motion_prompt"], motion.settings_fingerprint())
+            img = state.get("images", {}).get(str(index), {})
+            if mode == "s2v":
+                fp = fingerprint(img.get("fp"), img.get("attempt"), mode, scene.get("speech_prompt"), speech,
+                                 windows.get(index), timeline.get("audio_fp"), motion.s2v_fingerprint())
+            else:
+                fp = fingerprint(img.get("fp"), img.get("attempt"), mode, scene.get("motion_beats") or scene["motion_prompt"],
+                                 motion.clips_needed(seconds), motion.settings_fingerprint())
             if "motion" in self.force or index in redo or records.get(str(index)) != fp or not os.path.exists(clip):
-                todo.append((scene, clip, fp))
+                todo.append({"scene": scene, "clip": clip, "fp": fp, "mode": mode, "speech": speech, "seconds": seconds})
             else:
                 clips[index] = clip
+        # Gom theo model: I2V trước, S2V sau (mỗi lần đổi model 14B phải nạp lại hàng chục GB).
+        todo.sort(key=lambda t: (t["mode"] != "i2v", t["scene"]["index"]))
         if todo:
-            log(f"Tạo chuyển động cho {len(todo)} cảnh ({motion.model})...", "Motion")
-        for n, (scene, clip, fp) in enumerate(todo, start=1):
+            n_s2v = sum(1 for t in todo if t["mode"] == "s2v")
+            n_clips = sum(motion.clips_needed(t["seconds"]) for t in todo if t["mode"] == "i2v")
+            log(f"Chuyển động {len(todo)} cảnh ({motion.model}: {len(todo) - n_s2v} cảnh / {n_clips} clip; "
+                f"nhép miệng S2V: {n_s2v} cảnh)...", "Motion")
+        started = time.time()
+        for n, task in enumerate(todo, start=1):
+            scene, clip = task["scene"], task["clip"]
             image = os.path.join(work, "images", f"scene_{scene['index']:04d}.png")
-            negative = ", ".join(p for p in (scene["motion_negative"],) if p)
-            if motion.generate(image, scene["motion_prompt"], negative, scene["seed"], clip):
-                records[str(scene["index"])] = fp
+            negative = scene.get("motion_negative", "")
+            ok = False
+            if task["mode"] == "s2v":
+                wav = self._speech_track(audio_wav, windows[scene["index"]], task["speech"],
+                                         os.path.join(work, "motion", f"speech_{scene['index']:04d}.wav"))
+                ok = motion.generate_s2v(image, wav, scene.get("speech_prompt") or scene["motion_prompt"], negative, scene["seed"], clip)
+            if not ok:
+                ok = motion.generate_chain(image, scene.get("motion_beats") or [scene["motion_prompt"]], negative,
+                                           scene["seed"], task["seconds"], clip)
+            if ok:
+                records[str(scene["index"])] = task["fp"]
                 clips[scene["index"]] = clip
             else:
                 records.pop(str(scene["index"]), None)
             self.project.save_chapter_state(number, state)
-            log(f"  clip {n}/{len(todo)}", "Motion")
+            per = (time.time() - started) / n
+            log(f"  cảnh {n}/{len(todo)} ({task['mode']}, {task['seconds']:.0f}s) - còn ~{per * (len(todo) - n) / 60:.0f} phút", "Motion")
         self.comfy.free_memory()
         return clips
 

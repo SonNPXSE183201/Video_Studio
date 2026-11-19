@@ -72,6 +72,9 @@ class FakeOllama:
                     "location_id": "tangdauthi",
                     "shot_type": "medium_shot",
                     "motion_priority": 3 if item["scene_index"] % 4 == 0 else 1,
+                    "speaker_id": "keduyen" if has_hero and "“" in item["text"] else "",
+                    "action_beats_en": ["he picks up a cup", "he drinks slowly"] if has_hero else [],
+                    "props_en": "a tea cup",
                 })
             return {"scenes": scenes}
         return None
@@ -110,18 +113,38 @@ class FakeImages:
 
 
 class FakeMotion:
-    ready, model = True, "fake"
+    ready, s2v_ready, model = True, True, "fake"
 
     def __init__(self):
         self.calls = 0
+        self.s2v_calls = []
 
     def settings_fingerprint(self):
         return {"fake": 1}
 
-    def generate(self, image_path, prompt, negative, seed, output_path):
-        self.calls += 1
-        subprocess.run(["ffmpeg", "-y", "-loop", "1", "-i", image_path, "-t", "2", "-vf", "scale=416:232,zoompan=z='1+0.002*on':d=48:s=416x232:fps=24",
+    def s2v_fingerprint(self):
+        return {"fake_s2v": 1}
+
+    def clips_needed(self, seconds):
+        return max(1, min(4, int(seconds // 2.4) + 1))
+
+    def _clip(self, image_path, seconds, output_path):
+        subprocess.run(["ffmpeg", "-y", "-loop", "1", "-i", image_path, "-t", f"{seconds:.2f}",
+                        "-vf", "scale=416:232,zoompan=z='1+0.002*on':d=48:s=416x232:fps=16",
                         "-pix_fmt", "yuv420p", output_path], capture_output=True, check=True)
+
+    def generate_chain(self, image_path, prompts, negative, seed, seconds, output_path):
+        self.calls += 1
+        self.last_prompts = prompts
+        self._clip(image_path, 2.0 * self.clips_needed(seconds), output_path)
+        return True
+
+    def generate_s2v(self, image_path, audio_path, prompt, negative, seed, output_path):
+        import soundfile as sf
+
+        data, sr = sf.read(audio_path)
+        self.s2v_calls.append({"prompt": prompt, "seconds": len(data) / sr, "voiced": float((abs(data) > 0).mean())})
+        self._clip(image_path, len(data) / sr + 0.3, output_path)
         return True
 
 
@@ -225,6 +248,12 @@ class EndToEndTests(unittest.TestCase):
             self.assertTrue(any("candidate_" in c for c in draws))
             self.assertTrue(studio.chars.get_reference_image("keduyen"))
             self.assertGreater(studio._motion.calls, 0)
+            # Phim: mọi cảnh đều có chuyển động; cảnh thoại của nhân vật một mình -> nhép miệng S2V
+            # với audio chỉ giữ phần thoại (dẫn truyện bị tắt tiếng).
+            self.assertEqual(len(scenes), studio._motion.calls + len(studio._motion.s2v_calls))
+            self.assertTrue(studio._motion.s2v_calls)
+            self.assertTrue(all("speaking" in c["prompt"] for c in studio._motion.s2v_calls))
+            self.assertTrue(all(0 < c["voiced"] <= 1 for c in studio._motion.s2v_calls))
             series = project.load_series()
             self.assertEqual("tien_hiep", series["genre"])
             for sub in ("storyboards", "thumbnails", "reports"):
@@ -239,6 +268,7 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual([], studio2._images.calls)
             self.assertEqual({}, tts2.attempts)
             self.assertEqual(0, studio2._motion.calls)
+            self.assertEqual([], studio2._motion.s2v_calls)
             self.assertEqual(mtime, os.path.getmtime(video))
 
 

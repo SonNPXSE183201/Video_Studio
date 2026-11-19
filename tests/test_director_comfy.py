@@ -232,6 +232,30 @@ class ComfyTests(unittest.TestCase):
             length = graph["7" if model == "wan22_5b" else "16"]["inputs"]["length"]
             self.assertEqual(0, (length - 1) % 4)
 
+    def test_s2v_graph_chains_chunks(self):
+        cfg = read_yaml(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "settings.yaml"))["motion"]
+        gen = MotionGenerator(FakeComfy({}), cfg)
+        graph = gen.build_s2v("img.png", "a.wav", "p", "n", 7, 3)
+        for node_id, nd in graph.items():
+            for value in nd["inputs"].values():
+                if isinstance(value, list) and len(value) == 2 and isinstance(value[1], int):
+                    self.assertIn(str(value[0]), graph, f"S2V: node {node_id} trỏ tới node không tồn tại {value}")
+        kinds = [nd["class_type"] for nd in graph.values()]
+        self.assertEqual(1, kinds.count("WanSoundImageToVideo"))
+        self.assertEqual(2, kinds.count("WanSoundImageToVideoExtend"))
+        self.assertEqual(3, kinds.count("KSampler"))
+        # Như template: nhân đôi latent đầu, bỏ 3 ảnh đầu sau khi giải mã.
+        self.assertEqual(3, graph["23"]["inputs"]["batch_index"])
+
+    def test_chain_clip_count(self):
+        cfg = read_yaml(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "settings.yaml"))["motion"]
+        gen = MotionGenerator(FakeComfy({}), cfg)
+        clip = gen.clip_seconds()
+        self.assertAlmostEqual(81 / 16, clip, places=3)
+        self.assertEqual(1, gen.clips_needed(5.5))
+        self.assertEqual(2, gen.clips_needed(9.0))
+        self.assertEqual(4, gen.clips_needed(60.0))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -172,10 +172,22 @@ class SceneDirector:
             "change place, reuse the previous location_id and time_of_day. Use only character ids "
             "and location ids from the bible; for a new place leave location_id empty and describe "
             "it in location_en. Every *_en field must be concrete visible description (people, "
-            "pose, expression, objects, materials, light), never style words, never abstract plot. "
-            "motion_en: subtle 4-second movement (breathing, hair, cloth, smoke, water, light); "
-            "camera_motion_en: one slow camera move. motion_priority 0-3: 3 = action or strong "
-            "emotion that benefits from animation, 0 = static. Return strict JSON only."
+            "pose, expression, objects, materials, light), never style words, never abstract plot.\n"
+            "FILM RULES: this is a movie, not a slideshow of portraits. Each scene must SHOW WHAT "
+            "HAPPENS in its text: the event, the physical action and the important objects named in "
+            "the text (e.g. counting banknotes from a rusty tin box on a wooden desk), not a person "
+            "standing and posing. Characters are always doing something with their hands, body or "
+            "with each other (handing over, pointing, arguing, walking, eating, writing, opening). "
+            "Vary shots like an editor: wide establishing shot when the place changes, insert shot "
+            "for key objects, medium shot for actions, close_up for emotion. "
+            "Dialogue: when a character speaks a quoted line, set speaker_id to that character and "
+            "usually frame the speaker alone (population single, close_up or medium_shot) talking to "
+            "someone off-screen; use a pair shot only for physical interaction. "
+            "props_en: the concrete objects from the text that must be visible. "
+            "action_beats_en: 2-4 short sequential physical actions inside this scene, each about 5 "
+            "seconds, written for an animator (who moves which body part, how, toward whom/what); "
+            "they continue each other in order. camera_motion_en: one camera move. "
+            "motion_priority 0-3: 3 = strong action or emotion. Return strict JSON only."
         )
 
     def _relevant_character_ids(self, text: str, recent: List[str]) -> List[str]:
@@ -207,11 +219,13 @@ class SceneDirector:
             '{"scenes":[{"scene_index":1,"visual_type":"character|dialogue|action|environment|object|creature",'
             '"population_mode":"none|single|pair|group|crowd","visible_character_ids":["id"],'
             '"focus_character_id":"id or empty","subject_en":"who/what is seen and composition",'
-            '"action_en":"visible action","expression_en":"facial expression or empty",'
+            '"action_en":"the main visible action of this moment","expression_en":"facial expression or empty",'
+            '"props_en":"key objects from the text, visible","speaker_id":"id of the character speaking a quoted line, or empty",'
             '"location_id":"bible id or empty","location_en":"visible environment",'
             '"time_of_day":"day|night|dawn|dusk|indoor","mood_en":"lighting mood",'
             '"shot_type":"close_up|medium_shot|wide_shot|action_shot|over_shoulder|insert",'
-            '"motion_en":"subtle movement","camera_motion_en":"slow camera move","motion_priority":0}]}'
+            '"action_beats_en":["beat 1","beat 2"],"motion_en":"ambient movement (cloth, smoke, light)",'
+            '"camera_motion_en":"camera move","motion_priority":0}]}'
         )
         response = self.ollama.generate_json(prompt, system_prompt=self._system_prompt())
         parsed: Dict[int, Dict[str, Any]] = {}
@@ -293,6 +307,16 @@ class SceneDirector:
                 population = "single"  # người không tên nhưng có mặt
         if focus not in visible:
             focus = visible[0] if visible else None
+        # Người nói phải có mặt trong khung hình mới nhép miệng được.
+        speaker = self.chars.resolve_character(ai.get("speaker_id"))
+        if speaker and speaker not in visible:
+            speaker = None
+
+        beats: List[str] = []
+        for raw in self._as_list(ai.get("action_beats_en")):
+            text = str(raw.get("action") if isinstance(raw, dict) else raw or "").strip()
+            if text:
+                beats.append(text[:240])
 
         loc_id = self.locs.resolve(ai.get("location_id"))
         location_en = str(ai.get("location_en") or "").strip()
@@ -325,6 +349,9 @@ class SceneDirector:
             "motion_en": str(ai.get("motion_en") or "").strip(),
             "camera_motion_en": str(ai.get("camera_motion_en") or "").strip(),
             "motion_priority": priority,
+            "props_en": str(ai.get("props_en") or "").strip(),
+            "speaker_id": speaker,
+            "action_beats_en": beats[:4],
         }
 
     # ------------------------------------------------------- prompt compile
@@ -385,6 +412,8 @@ class SceneDirector:
                 value = meta.get(key)
                 if value and value.casefold() not in subject.casefold():
                     parts.append(value)
+            if meta.get("props_en"):
+                parts.append(f"clearly visible: {meta['props_en']}")
             positions = ["on the left", "on the right"] if len(ids) == 2 else [""]
             for index, char_id in enumerate(ids):
                 identity = self.chars.get_character_prompt(char_id, chapter)
@@ -418,16 +447,26 @@ class SceneDirector:
                 )
                 if p and p.strip()
             )
-            motion_parts = [
-                self.art.get("motion_style", ""),
-                self.style.get("motion_prefix_en", ""),
-                subject,
-                meta.get("action_en", ""),
-                meta.get("motion_en") or "subtle natural movement, breathing, hair and cloth moving slightly",
-                meta.get("camera_motion_en") or "slow cinematic push-in",
-                "keep the exact faces, clothing, colors and composition of the first frame, no new people",
-            ]
-            motion_prompt = ". ".join(p.strip(" .") for p in motion_parts if p and p.strip())
+            keep = "keep the exact faces, clothing, colors and setting of the first frame, no new people appear"
+            ambient = meta.get("motion_en") or "natural body movement, breathing, hair and cloth moving"
+            camera = meta.get("camera_motion_en") or "slow cinematic camera move"
+
+            def motion_text(action: str) -> str:
+                items = [self.art.get("motion_style", ""), self.style.get("motion_prefix_en", ""), subject,
+                         action, ambient, camera, keep]
+                return ". ".join(p.strip(" .") for p in items if p and p.strip())
+
+            beats = [b for b in (meta.get("action_beats_en") or []) if b] or [meta.get("action_en", "")]
+            motion_beats = [motion_text(b) for b in beats]
+            motion_prompt = motion_beats[0]
+            speaker = meta.get("speaker_id")
+            speech_prompt = ""
+            if speaker:
+                who = {"male": "The man", "female": "The woman"}.get(self.chars.get_gender(speaker), "The person")
+                speech_prompt = ". ".join(p for p in (
+                    f"{who} is speaking, lips and jaw moving naturally with the words, natural head and hand gestures while talking",
+                    meta.get("expression_en", ""), meta.get("action_en", ""), camera, keep,
+                ) if p)
             motion_negative = ", ".join(
                 p for p in (
                     self.style.get("motion_negative", ""),
@@ -443,6 +482,9 @@ class SceneDirector:
                     "positive": positive,
                     "negative": negative,
                     "motion_prompt": motion_prompt,
+                    "motion_beats": motion_beats,
+                    "speech_prompt": speech_prompt,
+                    "speaker_id": speaker,
                     "motion_negative": motion_negative,
                     "reference_images": refs,
                     "motion_override": override.get("motion"),

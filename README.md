@@ -10,11 +10,11 @@ Biến chương truyện chữ (tiếng Việt) thành video hoàn chỉnh: gi�
 |---|---|---|
 | Phân tích bộ truyện | LLM đọc 3 chương đầu → chọn **thể loại + thời đại + phong cách vẽ**, ghi vào `series.yaml` | heuristic từ khóa nếu LLM lỗi |
 | Story Bible | Quét **nhân vật** (ngoại hình cố định, trang phục theo chương) và **địa điểm** (mô tả cố định) | gộp bí danh, không ghi đè ngoại hình đã ổn định |
-| Đạo diễn | Chia cảnh theo đoạn văn (~15s), LLM chọn nhân vật/hành động/góc máy/bối cảnh, giữ liên tục với cảnh trước | thử lại lô nhỏ hơn, cảnh lỗi được đánh dấu trong báo cáo |
+| Đạo diễn | Chia cảnh ~10s như phim; LLM mô tả **sự kiện, đồ vật, tương tác** trong chương, 2-4 nhịp hành động mỗi cảnh, ai đang nói, góc máy đa dạng | thử lại lô nhỏ hơn, cảnh lỗi được đánh dấu trong báo cáo |
 | Giọng đọc | Chuẩn hóa văn bản (số, %, Lv, 【】…), chunk ≤160 ký tự, OmniVoice seed cố định, cắt lặng, nhịp nghỉ theo dấu câu | **PhoWhisper nghe lại**, sai > 15% thì sinh lại (tối đa 3 lần) |
 | Casting | Vẽ 3 ảnh chân dung cho nhân vật quan trọng, model thị giác chọn ảnh tốt nhất | — |
 | Vẽ ảnh | Qwen-Image (mặc định) + **Qwen-Image-Edit giữ mặt từ ảnh mẫu**; SDXL dự phòng | **VLM kiểm** số người, sai thời đại, dị dạng, chữ → vẽ lại |
-| Chuyển động | Wan 2.2 cho ~25% cảnh quan trọng; cảnh khác Ken Burns | clip lỗi → tự về Ken Burns |
+| Chuyển động (chế độ phim) | **Mọi cảnh** đều chuyển động bằng Wan 2.2 14B: nhiều clip nối tiếp theo các nhịp hành động. Cảnh nhân vật nói thoại dùng **Wan 2.2 S2V để nhép miệng** theo giọng đọc | clip lỗi → tự về I2V / Ken Burns |
 | Dựng phim | Crossfade, phụ đề 2 dòng, watermark, nhạc nền tự giảm khi có lời, chuẩn âm lượng −16 LUFS | hình và tiếng dài khớp tuyệt đối theo timeline |
 | Đóng gói | Ghép tập (mặc định 10 chương), upload Drive, storyboard + báo cáo để duyệt | — |
 
@@ -80,7 +80,7 @@ bash run.sh check
 
 ### 3. Làm phim
 ```bash
-bash run.sh new "Ten Bo Truyen"                    # tạo projects/ten_bo_truyen/
+bash run.sh new "Ten Bo Truyen" --voice giong.wav  # tạo dự án, clone giọng từ giong.wav (+ giong.txt)
 # chép các file chương .txt vào projects/ten_bo_truyen/chapters/
 bash run.sh run ten_bo_truyen                       # chạy toàn bộ
 ```

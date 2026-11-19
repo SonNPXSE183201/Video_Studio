@@ -51,8 +51,10 @@ export LD_LIBRARY_PATH="${OLLAMA_HOME}/lib/ollama:${LD_LIBRARY_PATH:-}"
 INSTALL_VIDEO_MODELS="${INSTALL_VIDEO_MODELS:-1}"
 INSTALL_QWEN_IMAGE="${INSTALL_QWEN_IMAGE:-1}"     # Qwen-Image + Lightning (~30 GB)
 INSTALL_QWEN_EDIT="${INSTALL_QWEN_EDIT:-1}"       # Qwen-Image-Edit giữ mặt nhân vật (~20 GB)
-INSTALL_SDXL="${INSTALL_SDXL:-1}"                 # SDXL dự phòng (~7 GB)
-INSTALL_WAN14B="${INSTALL_WAN14B:-0}"             # Wan 2.2 14B I2V + LightX2V (~32 GB)
+INSTALL_SDXL="${INSTALL_SDXL:-0}"                 # SDXL dự phòng (~7 GB), không cần khi có Qwen
+INSTALL_WAN14B="${INSTALL_WAN14B:-1}"             # Wan 2.2 14B I2V + LightX2V (~30 GB): chuyển động đẹp
+INSTALL_S2V="${INSTALL_S2V:-1}"                   # Wan 2.2 S2V 14B nhép miệng theo thoại (~17 GB)
+INSTALL_WAN5B="${INSTALL_WAN5B:-1}"               # Wan 2.2 5B dự phòng (~10 GB)
 PRELOAD_TTS_MODEL="${PRELOAD_TTS_MODEL:-1}"
 UPDATE_COMFYUI="${UPDATE_COMFYUI:-0}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
@@ -325,6 +327,7 @@ ai_video_studio:
   text_encoders: text_encoders
   vae: vae
   clip_vision: clip_vision
+  audio_encoders: audio_encoders
   loras: loras
 EOF
 
@@ -358,12 +361,27 @@ fi
 if [[ "${INSTALL_VIDEO_MODELS}" == "1" ]]; then
   log "6/8 - Tải model Wan 2.2 tạo animation"
   WAN22="${HF}/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files"
-  download_optional "${WAN22}/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors" \
-    "${COMFY_MODELS}/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors" 8000000000
   download_optional "${HF}/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" \
     "${COMFY_MODELS}/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" 5000000000
-  download_optional "${WAN22}/vae/wan2.2_vae.safetensors" \
-    "${COMFY_MODELS}/vae/wan2.2_vae.safetensors" 1000000000
+  if [[ "${INSTALL_WAN5B}" == "1" ]]; then
+    download_optional "${WAN22}/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors" \
+      "${COMFY_MODELS}/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors" 8000000000
+    download_optional "${WAN22}/vae/wan2.2_vae.safetensors" \
+      "${COMFY_MODELS}/vae/wan2.2_vae.safetensors" 1000000000
+  fi
+  if [[ "${INSTALL_WAN14B}" == "1" || "${INSTALL_S2V}" == "1" ]]; then
+    download_optional "${HF}/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors" \
+      "${COMFY_MODELS}/vae/wan_2.1_vae.safetensors" 200000000
+  fi
+  if [[ "${INSTALL_S2V}" == "1" ]]; then
+    # Theo template chính thức video_wan2_2_14B_s2v của ComfyUI.
+    download_optional "${WAN22}/diffusion_models/wan2.2_s2v_14B_fp8_scaled.safetensors" \
+      "${COMFY_MODELS}/diffusion_models/wan2.2_s2v_14B_fp8_scaled.safetensors" 10000000000
+    download_optional "${WAN22}/audio_encoders/wav2vec2_large_english_fp16.safetensors" \
+      "${COMFY_MODELS}/audio_encoders/wav2vec2_large_english_fp16.safetensors" 300000000
+    download_optional "${WAN22}/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors" \
+      "${COMFY_MODELS}/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors" 100000000
+  fi
   if [[ "${INSTALL_WAN14B}" == "1" ]]; then
     for f in wan2.2_i2v_high_noise_14B_fp8_scaled wan2.2_i2v_low_noise_14B_fp8_scaled; do
       download_optional "${WAN22}/diffusion_models/${f}.safetensors" \
@@ -372,8 +390,6 @@ if [[ "${INSTALL_VIDEO_MODELS}" == "1" ]]; then
     for f in wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise; do
       download_optional "${WAN22}/loras/${f}.safetensors" "${COMFY_MODELS}/loras/${f}.safetensors" 100000000
     done
-    download_optional "${HF}/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors" \
-      "${COMFY_MODELS}/vae/wan_2.1_vae.safetensors" 200000000
   fi
 else
   log "6/8 - Bỏ qua model video (INSTALL_VIDEO_MODELS=0)"
@@ -465,11 +481,13 @@ if [[ "${LOCAL_MODEL_CACHE:-1}" != "0" ]]; then
   mapfile -t model_files < <(
     cd "${COMFY_MODELS}" && {
       # Thứ tự ưu tiên (không dùng ls vì ls tự sắp xếp lại): text encoder dùng cho mọi ảnh,
-      # Qwen-Image-Edit vẽ phần lớn cảnh có nhân vật, rồi Qwen-Image, rồi model chuyển động.
+      # Qwen-Image-Edit vẽ mọi cảnh (single_model), rồi Wan 14B I2V, S2V; model dự phòng sau cùng.
       for pattern in text_encoders/qwen_2.5_vl*.safetensors diffusion_models/qwen_image_edit*.safetensors \
-        diffusion_models/qwen_image_fp8*.safetensors vae/qwen_image*.safetensors loras/Qwen-Image*.safetensors \
-        text_encoders/umt5*.safetensors diffusion_models/wan2.2_ti2v*.safetensors vae/wan2.2*.safetensors \
-        diffusion_models/wan2.2_i2v*.safetensors loras/wan2.2*.safetensors vae/wan_2.1*.safetensors; do
+        vae/qwen_image*.safetensors loras/Qwen-Image*.safetensors text_encoders/umt5*.safetensors \
+        diffusion_models/wan2.2_i2v_high*.safetensors diffusion_models/wan2.2_i2v_low*.safetensors \
+        loras/wan2.2*.safetensors vae/wan_2.1*.safetensors diffusion_models/wan2.2_s2v*.safetensors \
+        audio_encoders/*.safetensors diffusion_models/qwen_image_fp8*.safetensors \
+        diffusion_models/wan2.2_ti2v*.safetensors vae/wan2.2*.safetensors; do
         for f in ${pattern}; do [[ -f "${f}" ]] && echo "${f}"; done
       done
       find . -type f -name '*.safetensors' | sed 's|^\./||'
@@ -510,6 +528,7 @@ ai_video_studio:
   text_encoders: text_encoders
   vae: vae
   clip_vision: clip_vision
+  audio_encoders: audio_encoders
   loras: loras
 YAML
 
@@ -527,7 +546,7 @@ if ! wait_for_url http://127.0.0.1:8188/system_stats ComfyUI 120; then
 fi
 
 curl -fsS http://127.0.0.1:8188/object_info >"${RUN_DIR}/comfyui_object_info.json"
-for node in Wan22ImageToVideoLatent TextEncodeQwenImageEditPlus ModelSamplingAuraFlow; do
+for node in WanImageToVideo TextEncodeQwenImageEditPlus ModelSamplingAuraFlow WanSoundImageToVideo WanSoundImageToVideoExtend AudioEncoderLoader; do
   if ! grep -q "\"${node}\"" "${RUN_DIR}/comfyui_object_info.json"; then
     echo "[CẢNH BÁO] ComfyUI thiếu node ${node}. Cập nhật: UPDATE_COMFYUI=1 bash setup.sh" >&2
   fi

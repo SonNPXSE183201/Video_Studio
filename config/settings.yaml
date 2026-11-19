@@ -21,8 +21,8 @@ director:
   analysis_chapters: 3          # số chương đầu dùng để nhận diện thể loại/thời đại
   analysis_sample_chars: 6000
   character_scan_chars: 9000    # cửa sổ quét Story Bible
-  scene_target_chars: 230       # ~14-16 giây lời đọc mỗi cảnh
-  scene_max_chars: 360
+  scene_target_chars: 170       # ~10-11 giây lời đọc mỗi cảnh: cắt cảnh nhiều hơn như phim
+  scene_max_chars: 280
   batch_size: 6                 # số cảnh mỗi lần gọi LLM
   max_visible_characters: 2
   allow_crowds: false
@@ -124,26 +124,23 @@ casting:
   min_scenes: 2
   max_per_chapter: 6
 
-# --- Chuyển động image-to-video (Wan 2.2) ---
+# --- Chuyển động (Wan 2.2) ---
+# Chế độ phim: mọi cảnh đều chuyển động. Cảnh dài được phủ bằng nhiều clip nối tiếp
+# (clip sau bắt đầu từ khung cuối clip trước, theo các nhịp hành động của đạo diễn).
+# Cảnh có nhân vật nói thoại (một mình trong khung) dùng Wan 2.2 S2V để nhép miệng theo giọng đọc.
 motion:
   enabled: true
-  model: "wan22_5b"             # wan22_5b | wan22_14b (đẹp hơn, cần VRAM lớn, xem README)
-  ratio: 0.25                   # tỷ lệ cảnh có chuyển động; còn lại dùng Ken Burns
+  model: "wan22_14b"            # wan22_14b (đẹp, cần INSTALL_WAN14B=1) | wan22_5b (nhẹ). Thiếu 14B tự dùng 5B
+  coverage: "all"               # all = mọi cảnh | ratio = chỉ một phần cảnh (xem ratio)
+  ratio: 0.25
   min_priority: 1
-  frames: 97                    # ~4 giây @24fps
-  fps: 24
+  chain: true                   # nối nhiều clip để phủ kín cảnh dài
+  max_clips_per_scene: 4
+  max_slowdown: 1.2             # clip được kéo chậm tối đa 1.2 lần trước khi cần thêm clip
+  lipsync: true                 # nhép miệng bằng S2V (cần INSTALL_S2V=1)
   timeout_seconds: 1500
-  wan22_5b:
-    diffusion_model: "wan2.2_ti2v_5B_fp16.safetensors"
-    text_encoder: "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
-    vae: "wan2.2_vae.safetensors"
-    width: 1024
-    height: 576
-    steps: 20
-    cfg: 5.0
-    shift: 8.0
-    sampler: "uni_pc"
-    scheduler: "simple"
+  frames: 81
+  fps: 16
   wan22_14b:
     high_noise_model: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
     low_noise_model: "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
@@ -151,13 +148,46 @@ motion:
     low_noise_lora: "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
     text_encoder: "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
     vae: "wan_2.1_vae.safetensors"
-    width: 1280
-    height: 720
+    width: 832                  # 832x480 rồi phóng lên 1080p khi dựng; 1280x720 đẹp hơn nhưng chậm ~2.2 lần
+    height: 480
+    frames: 81                  # ~5 giây @16fps
+    fps: 16
     steps: 4
     split_step: 2
     cfg: 1.0
     shift: 5.0
     sampler: "euler"
+    scheduler: "simple"
+  wan22_5b:
+    diffusion_model: "wan2.2_ti2v_5B_fp16.safetensors"
+    text_encoder: "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    vae: "wan2.2_vae.safetensors"
+    width: 1024
+    height: 576
+    frames: 97
+    fps: 24
+    steps: 20
+    cfg: 5.0
+    shift: 8.0
+    sampler: "uni_pc"
+    scheduler: "simple"
+  s2v:                          # theo template chính thức video_wan2_2_14B_s2v của ComfyUI
+    enabled: true
+    model: "wan2.2_s2v_14B_fp8_scaled.safetensors"
+    audio_encoder: "wav2vec2_large_english_fp16.safetensors"
+    lora: "wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors"
+    lora_strength: 1.0
+    text_encoder: "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    vae: "wan_2.1_vae.safetensors"
+    width: 832
+    height: 480
+    chunk_frames: 77            # mỗi đoạn ~4.8 giây, tự nối thêm đoạn cho thoại dài
+    max_chunks: 8
+    fps: 16
+    steps: 4
+    cfg: 1.0
+    shift: 8.0
+    sampler: "uni_pc"
     scheduler: "simple"
 
 # --- Dựng phim ---
@@ -169,7 +199,7 @@ video:
   crf: 20                       # chất lượng libx264
   x264_preset: "medium"
   transition_sec: 0.5           # crossfade giữa các cảnh
-  motion_max_slowdown: 1.4      # kéo chậm clip AI tối đa 1.4 lần, phần dư dùng Ken Burns
+  motion_max_slowdown: 1.25     # kéo chậm clip AI tối đa 1.25 lần, phần dư dùng Ken Burns
   loudness_lufs: -16
   ken_burns:
     zoom: 1.12

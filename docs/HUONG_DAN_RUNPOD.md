@@ -1,5 +1,53 @@
 # Hướng dẫn chạy trên RunPod
 
+## 0. Chế độ phim: Wan 2.2 14B + nhép miệng (mặc định từ 20/11/2026)
+
+**Tool giờ làm gì**
+- **Mọi cảnh đều chuyển động** (không còn Ken Burns trừ khi lỗi).
+  - Cảnh dài khoảng 10 giây được phủ bằng 2–3 clip Wan 2.2 14B nối tiếp: clip sau bắt đầu từ khung cuối của clip trước.
+  - Mỗi clip là một **nhịp hành động** do đạo diễn viết, ví dụ: cầm hộp sắt, mở nắp, đếm tiền.
+- **Nhép miệng:** cảnh nhân vật nói câu thoại khi đang một mình trong khung hình được làm bằng **Wan 2.2 S2V**.
+  - Audio đưa vào chỉ giữ phần thoại; phần dẫn truyện bị tắt tiếng nên miệng không mấp máy sai lúc.
+- **Ảnh mô tả sự kiện:** đạo diễn phải vẽ việc đang xảy ra, đồ vật được nhắc trong chương và tương tác giữa nhân vật, đổi góc máy như dựng phim.
+
+**Giới hạn cần biết** (chưa chạy thử trên pod)
+- Bộ mã hóa âm thanh của S2V (`wav2vec2_large_english`) được huấn luyện bằng tiếng Anh. Khẩu hình với tiếng Việt sẽ khớp nhịp, khớp mở/đóng miệng, nhưng không chính xác từng âm.
+- Clip tạo ở 832×480 rồi phóng lên 1080p. Muốn nét hơn, đặt `motion.wan22_14b.width/height: 1280/720` (chậm khoảng 2,2 lần).
+
+### Cấu hình pod cho chế độ phim
+
+| Thành phần | Tối thiểu | Khuyến nghị | Lý do |
+|---|---|---|---|
+| VRAM | 32 GB | 48–96 GB | Wan 14B fp8 mỗi tầng ~14 GB, S2V ~16 GB, Qwen-Edit ~20 GB |
+| RAM | 64 GB | **≥ 94 GB** | Giữ được các model trong RAM; RAM ít thì phải đọc lại từ ổ mỗi lần đổi model (mất vài phút) |
+| Container disk | 150 GB | **200 GB** | Chép ~95 GB model hay dùng sang ổ nhanh |
+| Volume | 200 GB | 250 GB | Tổng model khoảng 150 GB (Qwen, Wan 14B, S2V, Ollama, TTS) |
+| NVENC | cần | | B200/B300/H100/A100 không có NVENC nên dựng video chậm |
+
+| Máy (giá lúc ghi) | VRAM / RAM / vCPU | Ước tính 1 chương ~11 phút video | Ghi chú |
+|---|---|---|---|
+| **RTX PRO 4500 SE** ($0.72/h) | 32 GB / 94 GB / 16 | ~2–2,5 giờ, **~$1.5–1.8** | ⭐ Rẻ nhất chạy được ổn định, RAM đủ |
+| RTX 5090 ($1.39/h) | 32 GB / 62 GB / 16 | ~1,3–1,6 giờ, ~$1.8–2.2 | Nhanh hơn, RAM hơi thiếu |
+| RTX PRO 6000 ($2.69/h) | 96 GB / 188 GB / 16 | ~0,8–1 giờ, ~$2.2–2.7 | Nhanh nhất, mọi model nằm sẵn trong VRAM |
+| RTX PRO 4500 thường ($0.72/h) | 32 GB / 30 GB khi gắn volume Global | chậm hơn nhiều | RAM 30 GB không giữ nổi model 14B |
+
+Thời gian trên là **ước tính từ số đo của Wan 5B và Qwen trên RTX PRO 4500**, chưa đo trực tiếp Wan 14B/S2V. Lần test sau sẽ đo số thật.
+
+Cài đặt: lệnh bootstrap mặc định tải Wan 14B, S2V và Qwen (`INSTALL_WAN14B=1 INSTALL_S2V=1`).
+
+### Bộ test cho truyện "Nghịch lưu quang âm"
+
+```bash
+cd /root/AI_Video_Studio
+# Đưa lên pod (kéo thả vào Jupyter, thư mục /workspace/upload/):
+#   Chuong_0001.txt ... Chuong_0003.txt  (từ AI_Novel_Generator_V2/output/Arc_1/Tap_1)
+#   clone_voice_clean.wav + clone_voice_clean.txt  (từ DocTruyenV2/input)
+bash run.sh new "Nghich Luu Quang Am" --from /workspace/upload --voice /workspace/upload/clone_voice_clean.wav
+bash run.sh run nghich_luu_quang_am --chapters 1 --no-upload
+```
+
+Muốn tiết kiệm khi thử: `--until images` để xem ảnh trước (khoảng 30 phút), hài lòng rồi mới chạy tiếp phần chuyển động.
+
 ## 1. Chọn GPU
 
 ### Bảng hiệu năng các cấu hình đã xem trên RunPod

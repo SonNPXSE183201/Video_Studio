@@ -12,6 +12,7 @@ import argparse
 import os
 import shutil
 import sys
+from typing import Optional
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
@@ -43,12 +44,37 @@ def open_project(cfg, name: str) -> Project:
 
 
 # ---------------------------------------------------------------- commands
+def set_project_voice(project: Project, wav: str, text: Optional[str] = None) -> None:
+    """Chép giọng mẫu (wav + file lời đúng từng chữ) vào dự án và khai báo trong series.yaml."""
+    if not os.path.isfile(wav):
+        raise SystemExit(f"Không thấy file giọng mẫu: {wav}")
+    text = text or os.path.splitext(wav)[0] + ".txt"
+    folder = os.path.join(project.root, "voice")
+    os.makedirs(folder, exist_ok=True)
+    shutil.copyfile(wav, os.path.join(folder, "voice.wav"))
+    series = project.load_series()
+    series.setdefault("voice", {})["ref_audio"] = "voice/voice.wav"
+    if os.path.isfile(text):
+        shutil.copyfile(text, os.path.join(folder, "voice.txt"))
+        series["voice"]["ref_text"] = "voice/voice.txt"
+    else:
+        print(f"[Cảnh báo] Không có file lời {text}: OmniVoice sẽ tự nhận dạng lời giọng mẫu (kém ổn định hơn).")
+    project.save_series(series)
+    print(f"Giọng đọc: {folder}")
+
+
+def cmd_voice(cfg, args) -> None:
+    set_project_voice(open_project(cfg, args.name), args.wav, args.text)
+
+
 def cmd_new(cfg, args) -> None:
     project = Project(projects_dir(cfg), args.name)
     imported = project.create(args.name, args.import_from)
     print(f"Đã tạo dự án: {project.root}")
     if imported:
         print(f"Đã nhập {len(imported)} chương từ {args.import_from}")
+    if args.voice:
+        set_project_voice(project, args.voice, args.voice_text)
     print(f"\n1. Chép file chương .txt vào: {project.chapters_dir}")
     print(f"2. (Tùy chọn) sửa {project.series_path} để chọn giọng đọc, thể loại, watermark")
     print(f"3. Chạy: python studio.py run {project.slug}")
@@ -196,7 +222,15 @@ def main() -> None:
     p = sub.add_parser("new", help="Tạo dự án (bộ truyện) mới")
     p.add_argument("name")
     p.add_argument("--from", dest="import_from", help="Thư mục chứa các file chương .txt để nhập")
+    p.add_argument("--voice", help="File giọng mẫu .wav (6-10 giây) để clone")
+    p.add_argument("--voice-text", help="File lời của giọng mẫu (mặc định: cùng tên .txt)")
     p.set_defaults(func=cmd_new)
+
+    p = sub.add_parser("voice", help="Đổi giọng clone của dự án")
+    p.add_argument("name")
+    p.add_argument("wav")
+    p.add_argument("--text", help="File lời của giọng mẫu (mặc định: cùng tên .txt)")
+    p.set_defaults(func=cmd_voice)
 
     p = sub.add_parser("run", help="Chạy toàn bộ quy trình")
     p.add_argument("name")
