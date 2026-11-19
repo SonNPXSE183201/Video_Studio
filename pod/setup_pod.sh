@@ -351,6 +351,8 @@ fi
 if [[ "${INSTALL_QWEN_EDIT}" == "1" ]]; then
   download_optional "${HF}/Comfy-Org/Qwen-Image-Edit_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_edit_2509_fp8_e4m3fn.safetensors" \
     "${COMFY_MODELS}/diffusion_models/qwen_image_edit_2509_fp8_e4m3fn.safetensors" 15000000000
+  # LoRA Lightning 8 bước cho Edit-2509: đo trên RTX PRO 4500, 20 bước CFG 2.5 mất ~130 s/ảnh.
+  download_optional "${HF}/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-8steps-V1.0-bf16.safetensors"     "${COMFY_MODELS}/loras/Qwen-Image-Edit-2509-Lightning-8steps-V1.0-bf16.safetensors" 300000000
 fi
 
 if [[ "${INSTALL_VIDEO_MODELS}" == "1" ]]; then

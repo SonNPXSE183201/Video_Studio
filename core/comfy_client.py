@@ -250,15 +250,36 @@ class ImageGenerator:
             values[f"ref_image_{index + 1}"] = refs[index] if index < len(refs) else ""
         return values
 
+    def _drop_missing_lora(self, name: str, problems: List[str]) -> bool:
+        """Thiếu file LoRA Lightning: bỏ LoRA, chuyển sang số bước/CFG thường thay vì bỏ cả workflow."""
+        section = self.cfg.get(name)
+        lora = str((section or {}).get("lora") or "")
+        if not lora or not any(lora in p for p in problems):
+            return False
+        section["lora"] = ""
+        section["steps"] = int(section.get("steps_no_lora", 20))
+        section["cfg"] = float(section.get("cfg_no_lora", 2.5))
+        log(f"Thiếu LoRA {lora}: '{name}' chạy {section['steps']} bước, CFG {section['cfg']} (chậm hơn).", "Ảnh")
+        return True
+
+    def _check(self, name: str, refs: List[str]) -> List[str]:
+        for _ in range(2):
+            try:
+                graph = self._graph(name, self._values(name, "t", "t", 1, refs))
+                problems = self.comfy.missing_requirements(graph)
+            except Exception as exc:
+                return [str(exc)]
+            # LoadImage báo thiếu ảnh mẫu giả là bình thường.
+            problems = [p for p in problems if "LoadImage" not in p]
+            if not problems or not self._drop_missing_lora(name, problems):
+                return problems
+        return problems
+
     def prepare(self) -> None:
         """Gọi một lần sau khi ComfyUI chạy: chọn workflow khả dụng."""
         primary = str(self.cfg.get("workflow", "qwen_image"))
         for name in (primary, "sdxl"):
-            try:
-                graph = self._graph(name, self._values(name, "test", "test", 1, ["x.png"]))
-                problems = self.comfy.missing_requirements(graph)
-            except Exception as exc:
-                problems = [str(exc)]
+            problems = self._check(name, ["x.png"])
             if not problems:
                 self.active_workflow = name
                 break
@@ -267,13 +288,7 @@ class ImageGenerator:
             raise ComfyError("Không có workflow ảnh nào chạy được trên ComfyUI. Chạy lại setup_pod.sh.")
         edit_name = str(self.cfg.get("edit_workflow", "") or "")
         if edit_name and self.cfg.get("use_reference_edit", True):
-            try:
-                graph = self._graph(edit_name, self._values(edit_name, "t", "t", 1, ["a.png", "b.png"]))
-                problems = self.comfy.missing_requirements(graph)
-                # LoadImage báo thiếu ảnh mẫu giả là bình thường.
-                problems = [p for p in problems if "LoadImage" not in p]
-            except Exception as exc:
-                problems = [str(exc)]
+            problems = self._check(edit_name, ["a.png", "b.png"])
             self.edit_enabled = not problems
             if problems:
                 log(f"Workflow giữ mặt '{edit_name}' chưa dùng được: {'; '.join(problems[:4])}", "Ảnh")
