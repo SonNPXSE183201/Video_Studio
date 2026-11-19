@@ -174,7 +174,7 @@ cd /root/AI_Video_Studio && bash run.sh check
 ```
 
 ### Bước 6: Google Drive (tùy chọn)
-1. Tải `rclone.conf` lên **`/workspace/rclone.conf`**: trong Jupyter, kéo thả file vào thư mục gốc.
+1. Tải `rclone.conf` lên **`/workspace/rclone.conf`**: trong Jupyter, mở thư mục `workspace` rồi kéo thả file vào.
 2. Chạy lại lệnh bootstrap. Setup tự cài file này mỗi lần khởi động.
 3. Remote trong file phải tên là `gdrive`.
 
@@ -186,7 +186,7 @@ cd /root/AI_Video_Studio
 bash run.sh new "Trong Sinh 2003"          # tạo dự án trong /workspace/video_studio_projects/trong_sinh_2003/
 ```
 Đưa file `Chuong_xxxx.txt` (UTF-8) vào thư mục chương của dự án theo một trong hai cách:
-- **Jupyter:** mở thư mục `video_studio_projects/trong_sinh_2003/chapters/` ở cây bên trái, rồi kéo thả file vào.
+- **Jupyter:** mở thư mục `workspace/video_studio_projects/trong_sinh_2003/chapters/` ở cây bên trái (gốc của Jupyter là `/`), rồi kéo thả file vào.
 - **runpodctl:** trên máy nhà chạy `runpodctl send chuong.zip`; trên pod chạy `runpodctl receive <mã>`, rồi `unzip chuong.zip -d /workspace/video_studio_projects/trong_sinh_2003/chapters/`.
 
 `projects/` trong thư mục code là liên kết tới `/workspace/video_studio_projects/`, nên dữ liệu không mất khi tắt pod.
