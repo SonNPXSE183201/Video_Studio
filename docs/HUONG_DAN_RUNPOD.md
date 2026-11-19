@@ -103,6 +103,42 @@ MIG là một **lát cắt** của card RTX PRO 6000 96 GB: bạn nhận 24 GB V
 - Giữ mặc định: `qwen2.5:14b`, `wan22_5b`.
 - Có thể thử `INSTALL_WAN14B=1`, nhưng 34 GB khá sát; nếu báo hết VRAM thì quay về `wan22_5b`.
 
+### Kết quả đo thực tế: RTX PRO 4500 (32 GB VRAM, 30 GB RAM, 10 vCPU, volume Global), 19/11/2026
+
+**Đầu vào:** Chương 1 (10 KB chữ). Tool tự nhận diện thể loại tiên hiệp, phong cách `anime_cn`.
+
+**Đầu ra:** video 1920×1080, 30 fps, H.264 + AAC, dài **7:33**, 295 MB. Gồm 27 cảnh, trong đó 7 cảnh có chuyển động. Kèm theo storyboard, thumbnail và báo cáo.
+
+| Bước | Thời gian | Ghi chú |
+|---|---|---|
+| Phân tích thể loại | 70 s | gồm nạp LLM lần đầu |
+| Story Bible + đạo diễn 27 cảnh | 1,7 phút | qwen2.5:14b, ~18 s cho mỗi lô 6 cảnh |
+| Giọng đọc 90 đoạn (7,5 phút audio) | 3,8 phút | PhoWhisper nghe lại, tự đọc lại đoạn sai |
+| Casting 2 nhân vật | ~1 phút | không tính thời gian nạp model |
+| Vẽ 27 ảnh | 9 phút | Qwen-Image-Edit + Lightning: ~10 s/ảnh không có ảnh mẫu, ~20 s/ảnh có ảnh mẫu |
+| QA + vẽ lại 9 ảnh | 5 phút | |
+| Chuyển động 7 clip Wan 2.2 5B | 19 phút | ~2 phút/clip, cộng ~5 phút nạp model từ volume |
+| Dựng video (NVENC) | 4 phút | |
+| **Tổng** | **~45 phút / chương** | GPU dùng trung bình 71%, VRAM tối đa 30 GB |
+
+**Chi phí:** khoảng **$0.55 / chương** (với giá $0.73/giờ).
+- Tắt chuyển động (`motion.enabled: false`): khoảng 25 phút, **~$0.30/chương**.
+- Giảm chuyển động (`motion.ratio: 0.15`): **~$0.47/chương**.
+
+**Những điểm nghẽn đo được, và cách đã sửa trong code:**
+1. **Volume Global đọc ~170 MB/s**, trong khi ổ container ~5 GB/s. Nạp một model 20 GB mất ~6 phút.
+   - Đã sửa: setup chép model hay dùng sang ổ container.
+   - Nên đặt **Container disk 150 GB** để chép được hết (kể cả Wan), tiết kiệm thêm ~5–10 phút mỗi chương.
+2. **Qwen-Image-Edit 20 bước, CFG 2.5: ~130 s/ảnh.**
+   - Đã sửa: dùng LoRA Lightning 8 bước, còn ~20 s/ảnh.
+3. **Đổi qua lại giữa Qwen-Image và Edit buộc nạp lại model mỗi lần.**
+   - Đã sửa: `single_model: true`, chỉ dùng Edit cho mọi cảnh.
+
+**Có nên đổi cấu hình?**
+- **RTX PRO 4500 là đủ.** GPU chưa phải điểm nghẽn chính; ổ đĩa và bước chuyển động mới là chỗ tốn thời gian.
+- Nếu còn máy, chọn **RTX PRO 4500 SE** (cùng giá, 94 GB RAM) và Container disk 150 GB.
+- RTX 5090 ($1.39/giờ) nhanh hơn khoảng 1,5 lần nhưng đắt gấp 1,9 lần, nên không đáng.
+
 ### Cách so sánh thực tế
 
 Chạy thử 1 chương rồi xem thời gian từng bước trong `projects/<du_an>/logs/`:
