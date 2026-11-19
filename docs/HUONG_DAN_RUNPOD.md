@@ -2,6 +2,37 @@
 
 ## 1. Chọn GPU
 
+### Bảng hiệu năng các cấu hình đã xem trên RunPod
+
+**Cách đọc bảng**
+- **Điểm vẽ ảnh** là mức **ước tính** khi chạy Qwen-Image và Wan 2.2, lấy RTX 4090 = 100. Số càng cao càng nhanh. Đây không phải số đo thật; số thật lấy từ lần chạy thử 1 chương.
+- **Dựng video**: máy có NVENC thì mã hóa bằng GPU, rất nhanh. Máy không có NVENC phải dùng CPU, nên tốc độ phụ thuộc số vCPU.
+- **Giá** lấy theo trang Deploy lúc ghi lại, và có thể thay đổi.
+
+| Cấu hình pod | VRAM | RAM | vCPU | Kiến trúc | NVENC | Điểm vẽ ảnh (4090=100) | Dựng video | Wan 14B | Đánh giá | Giá |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **RTX PRO 4500** | 32 GB | 62 GB | 12 | Blackwell | ✅ | ~75–85 | Nhanh (GPU) | Thử được (sát) | ⭐ **Cân bằng nhất**: đủ VRAM, đủ RAM, có NVENC, nhiều CPU | $0.72/h |
+| **B300 MIG 34GB** | 34 GB | 71 GB | 6 | Blackwell Ultra (lát MIG) | ❌ | ~80–100 (chưa đo) | Chậm (CPU, 6 vCPU) | Thử được (sát) | Vẽ nhanh, dựng chậm, rủi ro tương thích (mục 1.4) | $0.50/h |
+| **RTX PRO 4000** | 24 GB | **31 GB** | 12 | Blackwell | ✅ | ~55–65 | Nhanh (GPU) | ❌ | Chạy được, nhưng **RAM 31 GB thấp** (mục 1.1) | $0.57/h |
+| RTX 4090 | 24 GB | thường ≥ 48 GB | — | Ada | ✅ | 100 | Nhanh (GPU) | ❌ | Mốc so sánh | ~$0.35–0.70/h |
+| A40 | 48 GB | thường ≥ 48 GB | — | Ampere | ✅ | ~50–60 | Nhanh (GPU) | ✅ | Chậm hơn, nhưng VRAM lớn, chạy mọi model | ~$0.35–0.45/h |
+| RTX PRO 6000 MIG 24GB | 24 GB | — | — | Blackwell (lát MIG) | Có thể không | ~45–60 | Tùy | ❌ | Mục 1.2 | — |
+| L4 | 24 GB | — | — | Ada | ✅ | ~35–40 | Nhanh (GPU) | ❌ | Chậm (mục 1.3) | ~$0.4/h |
+
+**Xếp hạng theo hiệu năng tổng thể** (cả vẽ ảnh lẫn dựng video, độ ổn định):
+
+**RTX PRO 4500 > RTX 4090 > B300 MIG ≈ RTX PRO 4000 > A40 > PRO 6000 MIG > L4**
+
+**RTX PRO 4500 32 GB**
+- Khoảng trống VRAM 32 GB giúp Qwen-Image và Qwen-Image-Edit ít phải đẩy model sang RAM, nên ổn định hơn các máy 24 GB.
+- Muốn thử Wan 14B thì cài với `INSTALL_WAN14B=1` và đặt `motion.model: wan22_14b`. Nếu báo hết VRAM thì quay về `wan22_5b`.
+
+**RTX PRO 4000 với 31 GB RAM**
+- Thấp hơn mức khuyến nghị 48 GB.
+- Chạy thử 1 chương và theo dõi bằng `free -h`. Nếu pod bị kill hoặc ComfyUI tự tắt giữa chừng, nghĩa là thiếu RAM: chuyển sang máy khác.
+
+### Bảng tham khảo chung
+
 Giá dưới đây là mức tham khảo của Community Cloud và thay đổi theo ngày, nên xem lại trên trang Deploy.
 
 | GPU | VRAM | Giá khoảng | Dùng được? | Ghi chú |
@@ -26,6 +57,13 @@ Giá dưới đây là mức tham khảo của Community Cloud và thay đổi t
 - Kiến trúc Blackwell: có fp8, có NVENC, tiết kiệm điện. Tốc độ vẽ ảnh nằm khoảng giữa L4 và RTX 4090.
 - Cần PyTorch build CUDA 12.8 (kernel `sm_120`). `setup.sh` tự kiểm tra và tự nâng lên PyTorch 2.7.1 cu128 nếu template cũ. Dù vậy, nên chọn template **RunPod PyTorch có CUDA 12.8** cho gọn.
 - Nếu log có dòng `no kernel image is available`, chạy lại `AUTO_RUN=0 bash setup.sh`. Lỗi vẫn còn thì gửi log cho người bảo trì.
+- Pod RTX PRO 4000 trên RunPod đi kèm **31 GB RAM**, thấp hơn mức khuyến nghị 48 GB. Theo dõi bằng `free -h` khi chạy thử; bị kill giữa chừng thì đổi sang RTX PRO 4500.
+
+### 1.1b RTX PRO 4500 Blackwell 32 GB: lựa chọn ổn định nhất trong các máy đã xem
+
+- Có NVENC, 62 GB RAM và 12 vCPU, nên mọi khâu đều đủ tài nguyên.
+- Cùng ghi chú CUDA 12.8 như RTX PRO 4000.
+- 32 GB VRAM có thể thử Wan 14B (`INSTALL_WAN14B=1`, `motion.model: wan22_14b`).
 
 ### 1.2 RTX PRO 6000 MIG 24 GB: được, nhưng nên ưu tiên lựa chọn khác
 
