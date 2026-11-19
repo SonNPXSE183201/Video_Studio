@@ -258,6 +258,25 @@ class ComfyTests(unittest.TestCase):
         small = pick_motion(cfg, {"gpu": "RTX 4000 Ada", "vram_gb": 20, "ram_gb": 62})
         self.assertEqual(("wan22_14b", False), (small["model"], small["lipsync"]))
 
+    def test_quality_tiers_by_hardware(self):
+        from core.hardware import apply_quality, ollama_models_wanted
+
+        cfg = read_yaml(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "settings.yaml"))
+        a40, name, changes = apply_quality(cfg, {"vram_gb": 46, "ram_gb": 46})
+        self.assertEqual("thường", name)
+        self.assertEqual(832, a40["motion"]["wan22_14b"]["width"])
+        l40s, name, _ = apply_quality(cfg, {"vram_gb": 48, "ram_gb": 94})
+        self.assertEqual("cao", name)
+        self.assertEqual((1280, 720), (l40s["motion"]["wan22_14b"]["width"], l40s["motion"]["wan22_14b"]["height"]))
+        self.assertEqual("qwen2.5:32b", l40s["ollama"]["model"])
+        pro6000, name, _ = apply_quality(cfg, {"vram_gb": 96, "ram_gb": 161})
+        self.assertEqual("tối đa", name)
+        self.assertEqual("qwen2.5:72b", pro6000["ollama"]["model"])
+        self.assertEqual(832, cfg["motion"]["wan22_14b"]["width"])  # cfg gốc không bị sửa
+        # Setup tải bản mặc định (dự phòng) + bản của mức hiện tại.
+        self.assertEqual(["qwen2.5:14b", "qwen2.5vl:7b", "qwen2.5:72b", "qwen2.5vl:32b"],
+                         ollama_models_wanted(cfg, {"vram_gb": 96, "ram_gb": 161}))
+
     def test_chain_clip_count(self):
         cfg = read_yaml(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "settings.yaml"))["motion"]
         gen = MotionGenerator(FakeComfy({}), {**cfg, "model": "wan22_14b"})

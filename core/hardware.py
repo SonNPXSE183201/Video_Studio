@@ -3,10 +3,11 @@
 Không khởi tạo CUDA trong tiến trình chính (ComfyUI đang giữ GPU): đọc qua nvidia-smi và
 /proc/meminfo, giới hạn RAM của container lấy từ cgroup.
 """
+import copy
 import os
 import shutil
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 _CACHE: Optional[Dict[str, Any]] = None
 
@@ -73,3 +74,49 @@ def pick_motion(cfg: Dict[str, Any], hw: Dict[str, Any]) -> Dict[str, Any]:
     model = "wan22_14b" if use14 else "wan22_5b"
     reason = f"GPU {hw.get('gpu') or '?'} {vram:.0f} GB VRAM, RAM {ram:.0f} GB -> {model}" + (", nhép miệng S2V" if lipsync else ", không nhép miệng")
     return {"model": model, "lipsync": lipsync, "reason": reason}
+
+
+def _meets(minimum: Dict[str, Any], hw: Dict[str, Any]) -> bool:
+    return (float(hw.get("vram_gb") or 0) >= float(minimum.get("vram_gb", 0))
+            and float(hw.get("ram_gb") or 0) >= float(minimum.get("ram_gb", 0)))
+
+
+def pick_quality(cfg: Dict[str, Any], hw: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    """Mức chất lượng cao nhất pod đáp ứng (settings.yaml > quality.tiers, xếp từ thấp lên cao)."""
+    quality = cfg.get("quality") or {}
+    if not quality.get("auto", True):
+        return "cố định (quality.auto: false)", {}
+    name, changes = "mặc định", {}
+    for tier in quality.get("tiers") or []:
+        if _meets(tier.get("min") or {}, hw):
+            name, changes = str(tier.get("name", "?")), dict(tier.get("set") or {})
+    return name, changes
+
+
+def _set_dotted(cfg: Dict[str, Any], key: str, value: Any) -> None:
+    node = cfg
+    parts = key.split(".")
+    for part in parts[:-1]:
+        node = node.setdefault(part, {})
+    node[parts[-1]] = value
+
+
+def apply_quality(cfg: Dict[str, Any], hw: Dict[str, Any]) -> Tuple[Dict[str, Any], str, Dict[str, Any]]:
+    """Trả về (cfg đã nâng theo pod, tên mức, các thay đổi). Không sửa cfg gốc."""
+    name, changes = pick_quality(cfg, hw)
+    result = copy.deepcopy(cfg)
+    for key, value in changes.items():
+        _set_dotted(result, key, value)
+    return result, name, changes
+
+
+def ollama_models_wanted(cfg: Dict[str, Any], hw: Dict[str, Any]) -> List[str]:
+    """Model Ollama cần có trên pod: bản mặc định (dự phòng) + bản của mức chất lượng hiện tại."""
+    tuned, _, _ = apply_quality(cfg, hw)
+    wanted: List[str] = []
+    for source in (cfg.get("ollama") or {}, tuned.get("ollama") or {}):
+        for key in ("model", "vision_model"):
+            name = source.get(key)
+            if name and name not in wanted:
+                wanted.append(str(name))
+    return wanted

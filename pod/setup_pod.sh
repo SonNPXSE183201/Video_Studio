@@ -228,13 +228,23 @@ start_detached "${RUN_DIR}/ollama.pid" "${LOG_DIR}/ollama.log" \
   "${OLLAMA_HOME}/bin/ollama" serve
 wait_for_url http://127.0.0.1:11434/api/tags Ollama 60
 
-mapfile -t OLLAMA_WANTED < <("${STUDIO_VENV}/bin/python" - "${PROJECT_DIR}/config/settings.yaml" <<'PY'
+# Model Ollama: bản mặc định + bản của mức chất lượng ứng với VRAM/RAM pod này (quality.tiers).
+mapfile -t OLLAMA_WANTED < <("${STUDIO_VENV}/bin/python" - "${PROJECT_DIR}/config/settings.yaml" "${PROJECT_DIR}" <<'PY'
 import sys, yaml
+sys.path.insert(0, sys.argv[2])
 with open(sys.argv[1], encoding="utf-8") as f:
-    cfg = yaml.safe_load(f)["ollama"]
-print(cfg["model"])
-if cfg.get("vision_model"):
-    print(cfg["vision_model"])
+    cfg = yaml.safe_load(f)
+try:
+    from core.hardware import detect, ollama_models_wanted, pick_quality
+    hw = detect()
+    print(f"[INFO] Pod {hw.get('gpu')} {hw.get('vram_gb')} GB VRAM, RAM {hw.get('ram_gb')} GB -> mức '{pick_quality(cfg, hw)[0]}'", file=sys.stderr)
+    for name in ollama_models_wanted(cfg, hw):
+        print(name)
+except Exception as exc:
+    print(f"[CẢNH BÁO] Không xác định được mức chất lượng: {exc}", file=sys.stderr)
+    print(cfg["ollama"]["model"])
+    if cfg["ollama"].get("vision_model"):
+        print(cfg["ollama"]["vision_model"])
 PY
 )
 for model_name in "${OLLAMA_WANTED[@]}"; do

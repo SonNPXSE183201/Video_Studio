@@ -7,6 +7,35 @@
 paths:
   projects_dir: "projects"
 
+# --- Tự nâng chất lượng theo cấu hình pod ---
+# Tool đo VRAM/RAM của pod khi chạy rồi áp mức cao nhất đáp ứng được (các mức xếp từ thấp lên cao).
+# "set" ghi đè các giá trị bên dưới theo đường dẫn a.b.c. Model Ollama của mức được chọn sẽ được
+# setup tự tải thêm (vẫn giữ bản mặc định làm dự phòng). Tắt: auto: false.
+quality:
+  auto: true
+  tiers:
+    - name: "thường"            # A40 (46 GB RAM), RTX PRO 4500/4090...: 480p, LLM 14B
+      min: {vram_gb: 0, ram_gb: 0}
+      set: {}
+    - name: "cao"               # L40S / RTX 6000 Ada (48 GB) có RAM >= 60 GB: video 720p, LLM đạo diễn 32B
+      min: {vram_gb: 44, ram_gb: 60}
+      set:
+        motion.wan22_14b.width: 1280
+        motion.wan22_14b.height: 720
+        motion.s2v.width: 1024
+        motion.s2v.height: 576
+        ollama.model: "qwen2.5:32b"
+    - name: "tối đa"            # RTX PRO 6000 / H100 / A100 80 GB+: 720p cả nhép miệng, LLM 72B, VLM 32B
+      min: {vram_gb: 80, ram_gb: 120}
+      set:
+        motion.wan22_14b.width: 1280
+        motion.wan22_14b.height: 720
+        motion.s2v.width: 1280
+        motion.s2v.height: 720
+        ollama.model: "qwen2.5:72b"
+        ollama.vision_model: "qwen2.5vl:32b"
+        qa.min_score: 7
+
 # --- LLM đạo diễn + model thị giác kiểm tra ảnh (chạy local trong Ollama) ---
 ollama:
   host: "http://127.0.0.1:11434"

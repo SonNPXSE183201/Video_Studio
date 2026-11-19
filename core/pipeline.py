@@ -62,7 +62,26 @@ class Studio:
         project.ensure_dirs()
         set_log_file(os.path.join(project.logs_dir, "studio.log"))
 
+        # Tự nâng chất lượng theo VRAM/RAM của pod (settings.yaml > quality).
+        from core.hardware import apply_quality, detect
+
+        hw = detect()
+        base_llm = (cfg.get("ollama") or {}).copy()
+        cfg, tier, changes = apply_quality(cfg, hw)
+        self.cfg = cfg
+        if hw.get("vram_gb"):
+            log(f"Pod: {hw.get('gpu') or 'GPU'} {hw['vram_gb']:.0f} GB VRAM, RAM {hw.get('ram_gb', 0):.0f} GB"
+                f" -> mức chất lượng '{tier}'" + (f": {changes}" if changes else ""), "Studio")
+
         self.ollama = OllamaClient(cfg.get("ollama", {}))
+        # Model LLM/VLM của mức cao chưa tải được thì dùng lại bản mặc định.
+        if self.ollama.health():
+            for key in ("model", "vision_model"):
+                wanted, base = cfg["ollama"].get(key), base_llm.get(key)
+                if wanted and base and wanted != base and not self.ollama.has_model(wanted):
+                    log(f"Chưa có {wanted} trong Ollama, dùng {base}.", "Studio")
+                    cfg["ollama"][key] = base
+            self.ollama = OllamaClient(cfg.get("ollama", {}))
         self.comfy = ComfyClient(cfg.get("comfyui", {}).get("host", "http://127.0.0.1:8188"),
                                  int(cfg.get("comfyui", {}).get("timeout_seconds", 600)))
         self.tts = TTSEngine(cfg.get("tts", {}))

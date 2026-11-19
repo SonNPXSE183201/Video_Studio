@@ -234,6 +234,22 @@ output/
 logs/studio.log, upload.log      Log chạy và log upload
 ```
 
+## Tự nâng chất lượng theo cấu hình pod
+
+Mỗi lần chạy, tool đo VRAM/RAM của pod và áp **mức chất lượng cao nhất** pod đáp ứng (`settings.yaml > quality`). Setup tự tải thêm model cho mức đó, vẫn giữ bản mặc định làm dự phòng. Nếu model của mức cao chưa tải được, tool tự dùng lại bản mặc định.
+
+| Mức | Điều kiện | Ví dụ máy | Thay đổi |
+|---|---|---|---|
+| thường | mọi pod | A40, RTX PRO 4500 (SE), RTX 4090 | Video 480p→1080p, LLM đạo diễn 14B |
+| cao | VRAM ≥ 44 GB, RAM ≥ 60 GB | L40S, RTX 6000 Ada | Video **720p**, nhép miệng 576p, **LLM 32B** (tải thêm ~20 GB) |
+| tối đa | VRAM ≥ 80 GB, RAM ≥ 120 GB | RTX PRO 6000, H100/A100 80 GB | Video 720p, nhép miệng 720p, **LLM 72B + VLM 32B** (tải thêm ~70 GB), QA chặt hơn |
+
+Model chuyển động cũng tự chọn theo pod (`motion.model: auto`):
+- VRAM ≥ 24 GB và RAM ≥ 40 GB: Wan 14B + nhép miệng.
+- Yếu hơn: Wan 5B, không nhép miệng.
+
+Muốn cố định cấu hình thì đặt `quality.auto: false`. Các ngưỡng và giá trị đều sửa được trong `settings.yaml`.
+
 ## Tùy chỉnh thường gặp
 
 - **Giọng đọc:** file wav 6–10 giây, sạch, không nhạc nền, kèm file `.txt` ghi đúng từng chữ. Dùng `new --voice` hoặc lệnh `voice`.
