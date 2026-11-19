@@ -1,408 +1,236 @@
-# Hướng dẫn chạy trên RunPod
+# Hướng dẫn chạy AI Video Studio trên RunPod
 
-## 0. Chế độ phim: Wan 2.2 14B + nhép miệng (mặc định từ 20/11/2026)
+> Cập nhật 20/11/2026: chế độ phim (Wan 2.2 14B + nhép miệng S2V), tự chọn model và mức chất lượng theo pod, Google Drive theo ID thư mục, đánh dấu `.done`, volume Global.
 
-**Tool giờ làm gì**
-- **Mọi cảnh đều chuyển động** (không còn Ken Burns trừ khi lỗi).
-  - Cảnh dài khoảng 10 giây được phủ bằng 2–3 clip Wan 2.2 14B nối tiếp: clip sau bắt đầu từ khung cuối của clip trước.
-  - Mỗi clip là một **nhịp hành động** do đạo diễn viết, ví dụ: cầm hộp sắt, mở nắp, đếm tiền.
-- **Nhép miệng:** cảnh nhân vật nói câu thoại khi đang một mình trong khung hình được làm bằng **Wan 2.2 S2V**.
-  - Audio đưa vào chỉ giữ phần thoại; phần dẫn truyện bị tắt tiếng nên miệng không mấp máy sai lúc.
-- **Ảnh mô tả sự kiện:** đạo diễn phải vẽ việc đang xảy ra, đồ vật được nhắc trong chương và tương tác giữa nhân vật, đổi góc máy như dựng phim.
+## 0. Tóm tắt nhanh
 
-**Giới hạn cần biết** (chưa chạy thử trên pod)
-- Bộ mã hóa âm thanh của S2V (`wav2vec2_large_english`) được huấn luyện bằng tiếng Anh. Khẩu hình với tiếng Việt sẽ khớp nhịp, khớp mở/đóng miệng, nhưng không chính xác từng âm.
-- Clip tạo ở 832×480 rồi phóng lên 1080p. Muốn nét hơn, đặt `motion.wan22_14b.width/height: 1280/720` (chậm khoảng 2,2 lần).
-
-### Cấu hình pod cho chế độ phim
-
-| Thành phần | Tối thiểu | Khuyến nghị | Lý do |
-|---|---|---|---|
-| VRAM | 32 GB | 48–96 GB | Wan 14B fp8 mỗi tầng ~14 GB, S2V ~16 GB, Qwen-Edit ~20 GB |
-| RAM | 64 GB | **≥ 94 GB** | Giữ được các model trong RAM; RAM ít thì phải đọc lại từ ổ mỗi lần đổi model (mất vài phút) |
-| Container disk | 150 GB | **200 GB** | Chép ~95 GB model hay dùng sang ổ nhanh |
-| Volume | 200 GB | 250 GB | Tổng model khoảng 150 GB (Qwen, Wan 14B, S2V, Ollama, TTS) |
-| NVENC | cần | | B200/B300/H100/A100 không có NVENC nên dựng video chậm |
-
-| Máy (giá lúc ghi) | VRAM / RAM / vCPU | Ước tính 1 chương ~11 phút video | Ghi chú |
-|---|---|---|---|
-| **RTX PRO 4500 SE** ($0.72/h) | 32 GB / 94 GB / 16 | ~2–2,5 giờ, **~$1.5–1.8** | ⭐ Rẻ nhất chạy được ổn định, RAM đủ |
-| RTX 5090 ($1.39/h) | 32 GB / 62 GB / 16 | ~1,3–1,6 giờ, ~$1.8–2.2 | Nhanh hơn, RAM hơi thiếu |
-| RTX PRO 6000 ($2.69/h) | 96 GB / 188 GB / 16 | ~0,8–1 giờ, ~$2.2–2.7 | Nhanh nhất, mọi model nằm sẵn trong VRAM |
-| RTX PRO 4500 thường ($0.72/h) | 32 GB / 30 GB khi gắn volume Global | chậm hơn nhiều | RAM 30 GB không giữ nổi model 14B |
-
-Thời gian trên là **ước tính từ số đo của Wan 5B và Qwen trên RTX PRO 4500**, chưa đo trực tiếp Wan 14B/S2V. Lần test sau sẽ đo số thật.
-
-Cài đặt: lệnh bootstrap mặc định tải Wan 14B, S2V và Qwen (`INSTALL_WAN14B=1 INSTALL_S2V=1`).
-
-### Bộ test cho truyện "Nghịch lưu quang âm"
-
-```bash
-cd /root/AI_Video_Studio
-# Kéo thả file D:\Dự án truyện\Tool\upload_test_nghich_luu.zip vào thư mục workspace trong Jupyter
-# (gồm Chuong_0001-0003.txt + clone_voice_clean.wav/.txt), rồi giải nén:
-mkdir -p /workspace/upload && unzip -o /workspace/upload_test_nghich_luu.zip -d /workspace/upload
-bash run.sh new "Nghich Luu Quang Am" --from /workspace/upload --voice /workspace/upload/clone_voice_clean.wav
-bash run.sh run nghich_luu_quang_am --chapters 1 --no-upload
-```
-
-Muốn tiết kiệm khi thử: `--until images` để xem ảnh trước (khoảng 30 phút), hài lòng rồi mới chạy tiếp phần chuyển động.
-
-## 0b. Tài khoản RunPod mới (cấu hình ngày 20/11/2026)
-
-**Đã tạo sẵn trên tài khoản mới**
-- **Volume Global `ai_video_studio`**, gắn tại `/workspace`.
-  - Tự giãn theo dữ liệu thực tế, 100 GB đầu miễn phí, sau đó $0.09/GB/tháng, cộng phí đọc/ghi.
-  - Toàn bộ model khoảng 150 GB, tức khoảng **$4.5/tháng**.
-- **Mẫu pod**: template PyTorch 2.8 / CUDA 12.8.1, container disk 200 GB, Jupyter + SSH, GPU RTX PRO 4500 SE.
-
-**L40S có chạy được Wan 14B không?** Có, và dư sức.
-- 48 GB VRAM, có fp8 và NVENC.
-- Chế độ `auto` sẽ chọn Wan 14B + nhép miệng S2V.
-- Nhanh hơn RTX PRO 4500 khoảng 1,3 lần. Giá trên tài khoản mới là $1.09/giờ.
-- Chỉ cần kiểm tra cột **RAM ≥ 46 GB** khi thuê (khung bên phải trang Deploy).
-
-**Lần đầu bật pod**
-1. Mở Jupyter. Trong thư mục `workspace`, kéo thả vào:
-   - `rclone.conf` (lấy từ `D:\Dự án truyện\Tool\AI_Video_Studio\rclone.conf`);
-   - file `upload_test_nghich_luu.zip`.
-2. Mở Terminal và chạy lần lượt:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash   # ~40-60 phút
-   cd /root/AI_Video_Studio && bash run.sh check
-   mkdir -p /workspace/upload && unzip -o /workspace/upload_test_nghich_luu.zip -d /workspace/upload
-   bash run.sh new "Nghịch Lưu Quang Âm" --from /workspace/upload
-   bash run.sh drive nghich_luu_quang_am          # tạo thư mục "Nghịch Lưu Quang Âm" trong folder Drive của bạn
-   bash run.sh run nghich_luu_quang_am --chapters 1
-   ```
-
-**Tắt pod rồi bật lại: chỉ cần 2 lệnh**
-1. Trên RunPod, bấm **Start** pod cũ. Nếu báo hết máy, Deploy pod mới với **cùng volume `ai_video_studio`**: volume Global gắn được với GPU ở mọi vùng.
-2. Mở Jupyter → Terminal và chạy:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash   # ~15-20 phút
-   cd /root/AI_Video_Studio && nohup bash run.sh run nghich_luu_quang_am --stop-pod > /workspace/run.log 2>&1 &
-   ```
-   - Lệnh đầu không tải lại model: nó cài lại Python/ComfyUI rồi chép model từ volume sang ổ nhanh. Volume Global đọc khoảng 170 MB/s nên mất khoảng 10–15 phút.
-   - Lệnh sau tự làm tiếp từ chỗ dừng, bỏ qua các chương đã `.done`.
-
-**Những gì còn và mất khi Stop pod**
-
-| Còn (trên volume `/workspace`) | Mất (ổ container, bootstrap tạo lại) |
+| Việc | Lệnh / thao tác |
 |---|---|
-| Model AI, `rclone.conf`, toàn bộ dự án (chương, bible, ảnh mẫu, cache, trạng thái `.done`) | Code `/root/AI_Video_Studio`, Python venv, ComfyUI, bản chép model trên ổ nhanh |
+| Lần đầu (pod mới) | Mở Jupyter → kéo `rclone.conf` vào `workspace` → Terminal: `curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh \| bash` (40–60 phút) |
+| Mỗi lần Start lại pod | Đúng lệnh bootstrap trên (10–20 phút, không tải lại model) |
+| Kiểm tra | `cd /root/AI_Video_Studio && bash run.sh check` |
+| Tạo dự án | `bash run.sh new "Tên Truyện" --from /workspace/upload` |
+| Thử Drive | `bash run.sh drive ten_truyen` |
+| Làm video, xong tự tắt pod | `nohup bash run.sh run ten_truyen --stop-pod > /workspace/run.log 2>&1 &` |
+| Xem tiến độ | `tail -f /workspace/run.log` hoặc `bash run.sh status ten_truyen` |
 
-## 1. Chọn GPU
+## 1. Tài khoản và volume
 
-### Bảng hiệu năng các cấu hình đã xem trên RunPod
+**Volume Global `ai_video_studio`**, gắn tại `/workspace`, đã tạo sẵn trên tài khoản hiện tại.
 
-**Cách đọc bảng**
-- **Điểm vẽ ảnh** là mức **ước tính** khi chạy Qwen-Image và Wan 2.2, lấy RTX 4090 = 100. Số càng cao càng nhanh. Đây không phải số đo thật; số thật lấy từ lần chạy thử 1 chương.
-- **Dựng video**: máy có NVENC thì mã hóa bằng GPU, rất nhanh. Máy không có NVENC phải dùng CPU, nên tốc độ phụ thuộc số vCPU.
-- **Giá** lấy theo trang Deploy lúc ghi lại, và có thể thay đổi.
+| | Global (đang dùng) | Network volume |
+|---|---|---|
+| Chi phí ~150 GB | 100 GB đầu miễn phí, sau đó $0.09/GB/tháng → **~$4.5/tháng**, cộng phí đọc/ghi | $0.07/GB/tháng, trả theo dung lượng đặt → ~$10.5/tháng |
+| Thuê GPU | **ở mọi vùng** | chỉ trong 1 datacenter |
+| Tốc độ đọc | ~170 MB/s (đo thực tế) | nhanh hơn, tùy datacenter |
 
-| Cấu hình pod | VRAM | RAM | vCPU | Kiến trúc | NVENC | Điểm vẽ ảnh (4090=100) | Dựng video | Wan 14B | Đánh giá | Giá |
-|---|---|---|---|---|---|---|---|---|---|---|
-| **RTX PRO 4500** | 32 GB | 62 GB | 12 | Blackwell | ✅ | ~75–85 | Nhanh (GPU) | Thử được (sát) | ⭐ **Cân bằng nhất**: đủ VRAM, đủ RAM, có NVENC, nhiều CPU | $0.72/h |
-| **B300 MIG 34GB** | 34 GB | 71 GB | 6 | Blackwell Ultra (lát MIG) | ❌ | ~80–100 (chưa đo) | Chậm (CPU, 6 vCPU) | Thử được (sát) | Vẽ nhanh, dựng chậm, rủi ro tương thích (mục 1.4) | $0.50/h |
-| **RTX PRO 4000** | 24 GB | **31 GB** | 12 | Blackwell | ✅ | ~55–65 | Nhanh (GPU) | ❌ | Chạy được, nhưng **RAM 31 GB thấp** (mục 1.1) | $0.57/h |
-| RTX 4090 | 24 GB | thường ≥ 48 GB | — | Ada | ✅ | 100 | Nhanh (GPU) | ❌ | Mốc so sánh | ~$0.35–0.70/h |
-| A40 | 48 GB | thường ≥ 48 GB | — | Ampere | ✅ | ~50–60 | Nhanh (GPU) | ✅ | Chậm hơn, nhưng VRAM lớn, chạy mọi model | ~$0.35–0.45/h |
-| RTX PRO 6000 MIG 24GB | 24 GB | — | — | Blackwell (lát MIG) | Có thể không | ~45–60 | Tùy | ❌ | Mục 1.2 | — |
-| L4 | 24 GB | — | — | Ada | ✅ | ~35–40 | Nhanh (GPU) | ❌ | Chậm (mục 1.3) | ~$0.4/h |
+- Tốc độ volume **không ảnh hưởng tốc độ làm video**: setup chép model sang ổ container trước khi chạy. Nó chỉ làm mỗi lần bật pod lâu hơn vài phút.
+- Volume Global không cho đổi quyền file (`chmod`). Vì vậy code đặt ở `/root/AI_Video_Studio`; lệnh bootstrap đã tự xử lý.
+- Volume tính tiền cả khi pod đang tắt. Video được xóa sau khi lên Drive (`.done`), nên dung lượng chủ yếu là model.
 
-**Xếp hạng theo hiệu năng tổng thể** (cả vẽ ảnh lẫn dựng video, độ ổn định):
+## 2. Chọn GPU
 
-**RTX PRO 4500 > RTX 4090 > B300 MIG ≈ RTX PRO 4000 > A40 > PRO 6000 MIG > L4**
+Tool **tự đo VRAM/RAM** rồi chọn model và mức chất lượng (mục 7), nên thuê máy nào cũng chạy được. Khác biệt chỉ là tốc độ và chất lượng.
 
-**RTX PRO 4500 32 GB**
-- Khoảng trống VRAM 32 GB giúp Qwen-Image và Qwen-Image-Edit ít phải đẩy model sang RAM, nên ổn định hơn các máy 24 GB.
-- Muốn thử Wan 14B thì cài với `INSTALL_WAN14B=1` và đặt `motion.model: wan22_14b`. Nếu báo hết VRAM thì quay về `wan22_5b`.
-
-**RTX PRO 4000 với 31 GB RAM**
-- Thấp hơn mức khuyến nghị 48 GB.
-- Chạy thử 1 chương và theo dõi bằng `free -h`. Nếu pod bị kill hoặc ComfyUI tự tắt giữa chừng, nghĩa là thiếu RAM: chuyển sang máy khác.
-
-### Bảng tham khảo chung
-
-Giá dưới đây là mức tham khảo của Community Cloud và thay đổi theo ngày, nên xem lại trên trang Deploy.
-
-| GPU | VRAM | Giá khoảng | Dùng được? | Ghi chú |
+| Máy (giá trên tài khoản, 20/11/2026) | VRAM / RAM / vCPU | NVENC | Tool tự chọn | Ước tính 1 chương ~11 phút video |
 |---|---|---|---|---|
-| **A40** | 48 GB | ~$0.35–0.45/h | ✅ Khuyến nghị | Rẻ nhất trong nhóm 48 GB, chạy được cả Wan 14B |
-| RTX A6000 | 48 GB | ~$0.35–0.50/h | ✅ | Ngang A40 |
-| RTX 4090 | 24 GB | ~$0.35–0.70/h | ✅ | Vẽ ảnh nhanh nhất nhóm 24 GB (hỗ trợ fp8) |
-| **RTX PRO 4000 (Blackwell)** | 24 GB | xem giá | ✅ | Xem mục 1.1 |
-| **RTX PRO 6000 MIG 24GB** | 24 GB | xem giá | ⚠️ Được, có điều kiện | Xem mục 1.2 |
-| **L4** | 24 GB | ~$0.4/h | ✅ nhưng chậm | Xem mục 1.3 |
-| RTX 3090 / A5000 | 24 GB | ~$0.2–0.3/h | ✅ | Rẻ, tốc độ khá |
-| L40S | 48 GB | ~$0.8–0.9/h | ✅ | Nhanh, sát hoặc vượt ngân sách |
-| **B300 MIG 34GB** | 34 GB | ~$0.50/h | ✅ Đáng thử | Xem mục 1.4: không có NVENC, chỉ 6 vCPU |
-| A100 / H100 | 40–80 GB | — | ❌ Không nên | Không có NVENC, đắt |
+| **A40** ($0.59/h) | 48 / 46–50 / 9 | ✅ | Wan 14B + nhép miệng, mức "thường" | ~3–4 giờ, ~$1.8–2.4 |
+| **RTX PRO 4500 SE** ($0.72/h) | 32 / 94 / 16 | ✅ | Wan 14B + nhép miệng, mức "thường" | ~2–2,5 giờ, ~$1.5–1.9 |
+| **L40S** ($1.09/h) | 48 / thường ≥ 60 / 16 | ✅ | mức **"cao"**: 720p, LLM 32B | ~2–3 giờ, ~$2.2–3.3 |
+| **RTX PRO 6000** ($2.69/h) | 96 / 161 / 16 | ✅ | mức **"tối đa"**: 720p, LLM 72B | ~1–1,5 giờ, ~$2.7–4 |
+| RTX 4090 ($0.89/h) | 24 / 31 / 12 | ✅ | Wan 5B, không nhép miệng (RAM < 40 GB) | — |
+| B300 MIG 34GB ($0.50/h) | 34 / 71 / 6 | ❌ | Wan 14B + nhép miệng | dựng video bằng CPU, chậm |
+| H100 / A100 / B200 | 80+ | ❌ | mức "tối đa" | đắt, dựng video bằng CPU |
 
-**Mọi GPU 24 GB dùng chung một quy tắc.** Giữ nguyên cấu hình mặc định (`ollama.model: qwen2.5:14b`, `motion.model: wan22_5b`) và **không** đặt `INSTALL_WAN14B=1`. Tool chạy từng bước một và giải phóng VRAM giữa các bước, nên 24 GB là đủ.
+Các con số thời gian và chi phí là **ước tính**: Wan 14B và S2V chưa đo trên pod thật. Số đo thật của chế độ cũ nằm ở mục 10.
 
-**RAM hệ thống ≥ 48 GB.** Với GPU 24 GB, ComfyUI phải đẩy bớt model (text encoder 7B, Qwen-Image) sang RAM. Ở danh sách Deploy, cột RAM nằm cạnh tên GPU. Pod ít RAM dễ bị kill giữa chừng.
+**Lưu ý khi thuê:**
+- Xem cột **RAM** ở khung bên phải trang Deploy. RAM quyết định có dùng được Wan 14B hay không (cần ≥ 40 GB). Gắn volume Global có thể làm giảm RAM ở một số máy, ví dụ RTX PRO 4500 thường chỉ còn 30 GB, trong khi bản SE vẫn có 94 GB.
+- Nên chọn máy **có NVENC**. Máy không có NVENC phải mã hóa video bằng CPU.
+- GPU Blackwell (RTX PRO 4000/4500/6000, 5090, B300) cần template **CUDA 12.8**. Setup tự kiểm tra và tự nâng PyTorch nếu cần.
+- Máy hết chỗ: bấm **Deploy when available** để pod tự bật khi có máy. Pod bật là bắt đầu tính tiền.
 
-### 1.1 RTX PRO 4000 Blackwell 24 GB: dùng được
+## 3. Deploy pod
 
-- Kiến trúc Blackwell: có fp8, có NVENC, tiết kiệm điện. Tốc độ vẽ ảnh nằm khoảng giữa L4 và RTX 4090.
-- Cần PyTorch build CUDA 12.8 (kernel `sm_120`). `setup.sh` tự kiểm tra và tự nâng lên PyTorch 2.7.1 cu128 nếu template cũ. Dù vậy, nên chọn template **RunPod PyTorch có CUDA 12.8** cho gọn.
-- Nếu log có dòng `no kernel image is available`, chạy lại `AUTO_RUN=0 bash setup.sh`. Lỗi vẫn còn thì gửi log cho người bảo trì.
-- Pod RTX PRO 4000 trên RunPod đi kèm **31 GB RAM**, thấp hơn mức khuyến nghị 48 GB. Theo dõi bằng `free -h` khi chạy thử; bị kill giữa chừng thì đổi sang RTX PRO 4500.
-
-### 1.1b RTX PRO 4500 Blackwell 32 GB: lựa chọn ổn định nhất trong các máy đã xem
-
-- Có NVENC, 62 GB RAM và 12 vCPU, nên mọi khâu đều đủ tài nguyên.
-- Cùng ghi chú CUDA 12.8 như RTX PRO 4000.
-- 32 GB VRAM có thể thử Wan 14B (`INSTALL_WAN14B=1`, `motion.model: wan22_14b`).
-
-### 1.2 RTX PRO 6000 MIG 24 GB: được, nhưng nên ưu tiên lựa chọn khác
-
-MIG là một **lát cắt** của card RTX PRO 6000 96 GB: bạn nhận 24 GB VRAM và khoảng 1/4 số nhân của card.
-
-- **Tốc độ:** chỉ tương đương một card tầm trung, không phải sức mạnh của PRO 6000 đầy đủ.
-- **NVENC có thể không có** trong lát MIG. Tool tự thử NVENC rồi mới dùng; nếu không có sẽ chuyển sang libx264 trên CPU. Khi đó bước dựng video chậm hơn, phụ thuộc vào số vCPU của pod.
-- Cũng là Blackwell, nên áp dụng ghi chú về CUDA 12.8 ở mục 1.1.
-- **Chỉ đáng thuê khi giá rẻ hơn rõ rệt so với 4090 / PRO 4000.**
-
-### 1.3 L4 24 GB: dùng được, rẻ điện nhưng chậm
-
-- Kiến trúc Ada: có fp8, có NVENC (xuất video tốt).
-- Công suất chỉ 72 W và băng thông bộ nhớ thấp, nên vẽ ảnh và tạo chuyển động **chậm khoảng 2–3 lần so với RTX 4090**.
-- Tính theo chi phí mỗi chương thì thường thua 4090 / 3090 ở cùng mức giá. Chỉ chọn khi các máy kia hết chỗ.
-- Muốn đỡ chậm, đặt `motion.ratio: 0.15` hoặc `motion.enabled: false` trong `config/settings.yaml`.
-
-### 1.4 B300 MIG 34 GB (~$0.50/h, 71 GB RAM, 6 vCPU): đáng thử
-
-Đây là một lát của card B300, dòng Blackwell Ultra dành cho datacenter.
-
-**Điểm mạnh**
-- **34 GB VRAM** thoải mái hơn các máy 24 GB.
-- **71 GB RAM** dư dùng.
-- Lát MIG có băng thông bộ nhớ cao, nên tốc độ vẽ ảnh dự kiến ngang khoảng RTX 4090. Con số này là ước tính, chưa đo.
-
-**Điểm yếu**
-- **GPU datacenter (B200/B300, giống H100) không có NVENC.** Video phải mã hóa bằng CPU (libx264), mà pod này chỉ có **6 vCPU**, nên khâu dựng phim cuối sẽ là bước chậm nhất.
-  - Cách giảm: trong `config/settings.yaml`, đặt `video.x264_preset: veryfast` (chất lượng gần như không đổi ở `crf: 20`).
-  - Có thể giảm thêm bằng `video.ken_burns.supersample: 1`.
-- **Rủi ro tương thích:** B300 là GPU rất mới (kiến trúc sm_103).
-  - `setup.sh` có kiểm tra PyTorch và chạy thử một phép tính trên GPU.
-  - Nếu báo `no kernel image` hoặc Ollama không nhận GPU (xem `ollama.log`), đổi sang máy khác.
-- **Kiểm tra CPU ngay khi vào pod:** chạy `uname -m`. Nếu ra `aarch64`, máy dùng CPU ARM (GB300). Script có hỗ trợ ARM, nhưng một số thư viện Python có thể thiếu bản dựng sẵn; gặp lỗi khi cài thì đổi máy.
-
-**Cấu hình nên dùng**
-- Giữ mặc định: `qwen2.5:14b`, `wan22_5b`.
-- Có thể thử `INSTALL_WAN14B=1`, nhưng 34 GB khá sát; nếu báo hết VRAM thì quay về `wan22_5b`.
-
-### Kết quả đo thực tế: RTX PRO 4500 (32 GB VRAM, 30 GB RAM, 10 vCPU, volume Global), 19/11/2026
-
-**Đầu vào:** Chương 1 (10 KB chữ). Tool tự nhận diện thể loại tiên hiệp, phong cách `anime_cn`.
-
-**Đầu ra:** video 1920×1080, 30 fps, H.264 + AAC, dài **7:33**, 295 MB. Gồm 27 cảnh, trong đó 7 cảnh có chuyển động. Kèm theo storyboard, thumbnail và báo cáo.
-
-| Bước | Thời gian | Ghi chú |
-|---|---|---|
-| Phân tích thể loại | 70 s | gồm nạp LLM lần đầu |
-| Story Bible + đạo diễn 27 cảnh | 1,7 phút | qwen2.5:14b, ~18 s cho mỗi lô 6 cảnh |
-| Giọng đọc 90 đoạn (7,5 phút audio) | 3,8 phút | PhoWhisper nghe lại, tự đọc lại đoạn sai |
-| Casting 2 nhân vật | ~1 phút | không tính thời gian nạp model |
-| Vẽ 27 ảnh | 9 phút | Qwen-Image-Edit + Lightning: ~10 s/ảnh không có ảnh mẫu, ~20 s/ảnh có ảnh mẫu |
-| QA + vẽ lại 9 ảnh | 5 phút | |
-| Chuyển động 7 clip Wan 2.2 5B | 19 phút | ~2 phút/clip, cộng ~5 phút nạp model từ volume |
-| Dựng video (NVENC) | 4 phút | |
-| **Tổng** | **~45 phút / chương** | GPU dùng trung bình 71%, VRAM tối đa 30 GB |
-
-**Chi phí:** khoảng **$0.55 / chương** (với giá $0.73/giờ).
-- Tắt chuyển động (`motion.enabled: false`): khoảng 25 phút, **~$0.30/chương**.
-- Giảm chuyển động (`motion.ratio: 0.15`): **~$0.47/chương**.
-
-**Những điểm nghẽn đo được, và cách đã sửa trong code:**
-1. **Volume Global đọc ~170 MB/s**, trong khi ổ container ~5 GB/s. Nạp một model 20 GB mất ~6 phút.
-   - Đã sửa: setup chép model hay dùng sang ổ container.
-   - Nên đặt **Container disk 150 GB** để chép được hết (kể cả Wan), tiết kiệm thêm ~5–10 phút mỗi chương.
-2. **Qwen-Image-Edit 20 bước, CFG 2.5: ~130 s/ảnh.**
-   - Đã sửa: dùng LoRA Lightning 8 bước, còn ~20 s/ảnh.
-3. **Đổi qua lại giữa Qwen-Image và Edit buộc nạp lại model mỗi lần.**
-   - Đã sửa: `single_model: true`, chỉ dùng Edit cho mọi cảnh.
-
-**Có nên đổi cấu hình?**
-- **RTX PRO 4500 là đủ.** GPU chưa phải điểm nghẽn chính; ổ đĩa và bước chuyển động mới là chỗ tốn thời gian.
-- Nếu còn máy, chọn **RTX PRO 4500 SE** (cùng giá, 94 GB RAM) và Container disk 150 GB.
-- RTX 5090 ($1.39/giờ) nhanh hơn khoảng 1,5 lần nhưng đắt gấp 1,9 lần, nên không đáng.
-
-### Cách so sánh thực tế
-
-Chạy thử 1 chương rồi xem thời gian từng bước trong `projects/<du_an>/logs/`:
-
-```
-chi phí 1 chương = giá/giờ × (số phút chạy 1 chương / 60)
-```
-
-Chọn máy có chi phí một chương thấp nhất, không phải máy có giá theo giờ thấp nhất.
-
-## 2. Host từ đầu (tài khoản mới hoặc lần đầu)
-
-### Bước 1: Chuẩn bị tài khoản RunPod
-1. Đăng ký tài khoản ở runpod.io, nạp tiền (Billing). Mỗi giờ chạy khoảng $0.5–0.8.
-2. Nên bật MFA (bảo mật hai lớp) cho tài khoản.
-
-### Bước 2: Tạo volume lưu trữ (để không phải tải lại khoảng 90 GB model)
-
-Menu **Storage → Network Volume → New**. Có hai loại:
-
-| Loại | Ưu điểm | Nhược điểm |
-|---|---|---|
-| **Network volume theo datacenter** | Ổn định, đọc model nhanh | Chỉ thuê được GPU ở đúng datacenter đó |
-| **Global** | Gắn được với GPU ở mọi nơi | **Không cho `chmod`** (nên code phải đặt ngoài `/workspace`, script đã tự xử lý). Có thể làm giảm RAM/vCPU của pod. |
-
-Dung lượng: **150 GB** (200 GB nếu dùng Wan 14B). Volume tính phí theo tháng, kể cả khi pod đã tắt.
-
-### Bước 3: Deploy pod
-Vào **Pods → Deploy**, rồi chọn lần lượt:
-1. **Template:** `PyTorch 2.8.0`. Ở ô phiên bản, chọn **CUDA 12.8.1** (image `runpod/pytorch:...-cu1281-torch280-ubuntu2404`).
-2. **Set overrides:**
-   - Container disk **150 GB** (tối thiểu 60 GB). Mỗi lần khởi động, setup chép model từ volume sang ổ này. Đo thực tế: ổ container đọc ~5 GB/s, volume Global chỉ ~170 MB/s; nạp model 20 GB từ volume mất khoảng 2 phút mỗi lần.
+1. **Pods → Deploy.**
+2. **Template:** `PyTorch 2.8.0`, phiên bản **CUDA 12.8.1** (`runpod/pytorch:...-cu1281-torch280-ubuntu2404`).
+3. **Set overrides:**
+   - **Container disk 200 GB**: chỗ chép ~110 GB model cho nhanh.
    - Tích **Start Jupyter notebook** và **SSH terminal access**.
-   - Cổng HTTP `8888`.
-3. **GPU:** xem bảng ở mục 1.
-   - Sau khi gắn volume, **xem lại cột RAM** ở khung bên phải, vì volume Global có thể làm giảm RAM.
-   - Ví dụ thực tế: RTX PRO 4500 bị giảm còn 30 GB RAM, trong khi **RTX PRO 4500 SE** cùng giá vẫn có 94 GB RAM.
-4. **Storage → Add volume:** chọn volume ở bước 2, mount `/workspace`.
-5. **Instance pricing:** On-Demand.
-6. Bấm **Deploy Pod**.
+   - Cổng HTTP 8888.
+4. **GPU:** theo mục 2. Kiểm tra RAM ở khung bên phải.
+5. **Storage → Add volume:** chọn `ai_video_studio` (Global), mount `/workspace`. **Không được bỏ trống mục này.**
+6. **Pod name:** ví dụ `video_studio`. **Instance pricing:** On-Demand.
+7. Bấm **Deploy Pod**.
 
-### Bước 4: Mở terminal
-Vào **Pods**, bấm tên pod, rồi chọn **Connect**:
-- Bấm **Jupyter Lab** (đợi trạng thái Ready).
-- Trong Jupyter chọn **Terminal**.
+## 4. Cài đặt lần đầu
 
-### Bước 5: Cài đặt bằng một lệnh
-```bash
-curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash
-```
-Lệnh này làm lần lượt:
-- Clone code vào `/root/AI_Video_Studio`.
-- Cài Python, Ollama, ComfyUI.
-- Tải model vào `/workspace/ai-video-studio-runtime`.
-- Bật dịch vụ và chạy `check`.
-
-Thời gian:
-- **Lần đầu khoảng 30–45 phút**, chủ yếu để tải khoảng 90 GB.
-- Muốn chạy nền để đóng được trình duyệt:
-  ```bash
-  (curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | nohup bash > /workspace/bootstrap.out 2>&1 &)
-  tail -f /workspace/setup.log
-  ```
-- Xong khi log in dòng `CÀI ĐẶT HOÀN TẤT`.
-
-Kiểm tra:
-```bash
-cd /root/AI_Video_Studio && bash run.sh check
-```
-
-### Bước 6: Google Drive (tùy chọn)
-1. Tải `rclone.conf` lên **`/workspace/rclone.conf`**: trong Jupyter, mở thư mục `workspace` rồi kéo thả file vào.
-2. Chạy lại lệnh bootstrap. Setup tự cài file này mỗi lần khởi động.
-3. Remote trong file phải tên là `gdrive`.
-
-Trên volume Global sẽ thấy cảnh báo `Failed to set permissions on config file`. Cảnh báo này vô hại.
-
-### Bước 7: Tạo dự án và đưa chương lên
-```bash
-cd /root/AI_Video_Studio
-bash run.sh new "Trong Sinh 2003"          # tạo dự án trong /workspace/video_studio_projects/trong_sinh_2003/
-```
-Đưa file `Chuong_xxxx.txt` (UTF-8) vào thư mục chương của dự án theo một trong hai cách:
-- **Jupyter:** mở thư mục `workspace/video_studio_projects/trong_sinh_2003/chapters/` ở cây bên trái (gốc của Jupyter là `/`), rồi kéo thả file vào.
-- **runpodctl:** trên máy nhà chạy `runpodctl send chuong.zip`; trên pod chạy `runpodctl receive <mã>`, rồi `unzip chuong.zip -d /workspace/video_studio_projects/trong_sinh_2003/chapters/`.
-
-`projects/` trong thư mục code là liên kết tới `/workspace/video_studio_projects/`, nên dữ liệu không mất khi tắt pod.
-
-**Giọng đọc riêng:**
-1. Chép file `giong.wav` (6–10 giây, sạch) và `giong.txt` (ghi đúng từng chữ trong đoạn wav) vào thư mục dự án.
-2. Khai báo trong `series.yaml`:
-   ```yaml
-   voice:
-     ref_audio: giong.wav
-     ref_text: giong.txt
-   ```
-
-### Bước 8: Chạy thử một chương, rồi chạy cả bộ
-```bash
-bash run.sh run trong_sinh_2003 --chapters 484 --no-upload      # thử 1 chương
-bash run.sh status trong_sinh_2003
-nohup bash run.sh run trong_sinh_2003 --stop-pod > /workspace/run.log 2>&1 &   # cả bộ, xong tự tắt pod
-tail -f /workspace/run.log
-```
-
-Kết quả nằm ở `/workspace/video_studio_projects/<du_an>/output/`:
-- `chapters/`: video từng chương.
-- `episodes/`: video ghép theo tập.
-- `storyboards/`: ảnh tổng hợp các cảnh.
-- `reports/`: báo cáo lỗi.
-
-Có thể tải về qua Jupyter (chuột phải vào file, chọn Download), hoặc để tool tự upload lên Drive.
-
-## 3. Sau khi Stop pod và Start lại (cùng tài khoản)
-
-Khi pod Stop, ổ container bị xóa: mất code, Python và Ollama. Volume `/workspace` vẫn còn đủ model, dự án và `rclone.conf`.
-
-1. Vào **Pods**, chọn pod, bấm **Start**. Nếu báo hết GPU, Deploy pod mới gắn cùng volume.
-2. Mở Jupyter, rồi Terminal.
-3. Chạy lại đúng lệnh bootstrap. Lần này **khoảng 5–10 phút** vì không tải lại model:
+1. **Pods** → bấm tên pod → **Connect** → **Jupyter Lab** (đợi Ready).
+2. Kéo thả vào thư mục `workspace` trong Jupyter. Gốc của Jupyter là `/`, nên `workspace` chính là `/workspace`.
+   - `rclone.conf`, lấy từ `D:\Dự án truyện\Tool\AI_Video_Studio\rclone.conf`. Remote trong file phải tên `gdrive`.
+   - Các file chương `.txt`, đặt trong thư mục `upload` mới tạo.
+3. Mở **Terminal** và chạy:
    ```bash
    curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash
+   cd /root/AI_Video_Studio && bash run.sh check
    ```
-4. Chạy tiếp. Tool tự bỏ qua phần đã làm nhờ cache:
-   ```bash
-   cd /root/AI_Video_Studio
-   nohup bash run.sh run trong_sinh_2003 --stop-pod > /workspace/run.log 2>&1 &
-   ```
+   - Lần đầu mất 40–60 phút, chủ yếu để tải ~150 GB model vào volume (~45 MB/s).
+   - Muốn đóng trình duyệt mà vẫn cài: `(curl -fsSL .../bootstrap.sh | nohup bash > /workspace/bootstrap.out 2>&1 &)`, rồi theo dõi bằng `tail -f /workspace/setup.log`.
+   - Cài xong khi log in dòng `CÀI ĐẶT HOÀN TẤT`.
 
-Muốn cài xong tự chạy luôn thì dùng một lệnh:
-```bash
-curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | AUTO_RUN=1 PROJECT=trong_sinh_2003 bash
+**Setup tải những gì:** toàn bộ model, kể cả bản dự phòng cho pod yếu. Thuê pod mạnh hơn sau này không phải tải lại; chỉ tải thêm LLM của mức "cao"/"tối đa" một lần.
+
+| Nhóm | Model |
+|---|---|
+| Vẽ ảnh | Qwen-Image-Edit 2509 + Lightning (chính), Qwen-Image + Lightning, SDXL (dự phòng) |
+| Chuyển động | Wan 2.2 14B I2V (2 tầng + LightX2V), Wan 2.2 5B (pod yếu) |
+| Nhép miệng | Wan 2.2 S2V 14B + wav2vec2 |
+| Đạo diễn / kiểm ảnh | qwen2.5:14b, qwen2.5vl:7b (+ 32b/72b nếu pod đạt mức cao) |
+| Giọng đọc | OmniVoice, PhoWhisper-large |
+
+## 5. Google Drive
+
+- Mọi thứ upload vào thư mục có ID `1Y8HB6uJQXZDYvssRodvvNqzCrzMqsgP7` (`settings.yaml > upload.root_folder_id`).
+- Tool upload theo **ID thư mục** chứ không theo tên, để tránh lỗi tên tiếng Việt có dấu.
+- Mỗi bộ truyện có thư mục con mang tên truyện (lấy từ `series.yaml > title`, đổi được bằng `drive_folder`):
+
+```
+<thư mục Drive của bạn>/
+└── Nghịch Lưu Quang Âm/
+    ├── <du_an>_Tap001_Chuong0001-0010.mp4   video tập (ghép 10 chương)
+    ├── chapters/Chuong_0001.mp4              video từng chương (khi bật upload_chapters)
+    └── review/                               storyboard, thumbnail, báo cáo lỗi từng chương
 ```
 
-## 4. Chuyển sang tài khoản RunPod khác
+- **Thử kết nối:** `bash run.sh drive <du_an>` ghi file `_kiem_tra_ket_noi.txt` vào `review/`. Lần đầu chậm 20–30 giây vì rclone làm mới đăng nhập.
+- **`.done`:** tập đã lên Drive thì các chương của tập được đánh dấu `.done`, xóa ảnh/clip/audio/video trung gian (~1 GB/chương), và lần chạy sau tự bỏ qua. Muốn làm lại: `--force done`.
+- **Upload lỗi:** file vẫn được giữ trên pod, lần chạy sau thử lại.
 
-Volume **không chuyển được giữa tài khoản**. Trên tài khoản mới:
-1. Làm lại mục 2 từ đầu, bao gồm tải lại model, khoảng 30–45 phút.
-2. Chuyển dữ liệu dự án cũ. Trên pod cũ:
+## 6. Làm video
+
+```bash
+cd /root/AI_Video_Studio
+bash run.sh new "Nghịch Lưu Quang Âm" --from /workspace/upload   # nhập chương; giọng mặc định = clone_voice_clean
+bash run.sh run nghich_luu_quang_am --chapters 1 --until images    # xem thử ảnh trước (~30-40 phút)
+nohup bash run.sh run nghich_luu_quang_am --stop-pod > /workspace/run.log 2>&1 &   # chạy hết, xong tự tắt pod
+```
+
+- **Giọng riêng cho một bộ truyện:** `bash run.sh new "Tên" --voice giong.wav` (kèm `giong.txt` ghi đúng từng chữ), hoặc `bash run.sh voice <du_an> giong.wav`.
+- **`--stop-pod`:** tắt pod qua RunPod API, dự phòng bằng `runpodctl`. Pod vẫn tắt kể cả khi không còn chương nào cần làm. Dữ liệu trên volume giữ nguyên.
+- **Kết quả trên pod:** `/workspace/video_studio_projects/<du_an>/output/`.
+  - `chapters/`: video từng chương.
+  - `episodes/`: video tập.
+  - `storyboards/`: bảng ảnh các cảnh.
+  - `reports/`: báo cáo lỗi.
+
+**Chế độ phim làm gì:**
+- **Mọi cảnh đều chuyển động.** Cảnh ~10 giây được phủ bằng 2–3 clip Wan nối tiếp (clip sau bắt đầu từ khung cuối của clip trước). Mỗi clip diễn một **nhịp hành động** do đạo diễn viết.
+- **Nhép miệng:** cảnh nhân vật nói thoại khi đang một mình trong khung hình dùng Wan 2.2 S2V. Audio đưa vào chỉ giữ phần thoại, phần dẫn truyện bị tắt tiếng.
+- **Ảnh mô tả đúng sự kiện:** đồ vật trong chương, tương tác giữa nhân vật, góc máy đa dạng.
+- **Giới hạn:** bộ mã hóa âm thanh của S2V được huấn luyện bằng tiếng Anh, nên khẩu hình với tiếng Việt khớp nhịp nhưng không khớp chính xác từng âm.
+
+## 7. Tự chọn model và nâng chất lượng theo pod
+
+| Mức | Điều kiện | Thay đổi |
+|---|---|---|
+| thường | mọi pod | Video 832×480 phóng lên 1080p, LLM đạo diễn 14B |
+| cao | VRAM ≥ 44 GB và RAM ≥ 60 GB | Video **1280×720**, nhép miệng 1024×576, **LLM 32B** |
+| tối đa | VRAM ≥ 80 GB và RAM ≥ 120 GB | Video 720p, nhép miệng 720p, **LLM 72B + VLM 32B**, QA chặt hơn |
+
+**Model chuyển động** (`motion.model: auto`):
+- VRAM ≥ 24 GB và RAM ≥ 40 GB: Wan 14B + nhép miệng.
+- VRAM ≥ 20 GB và RAM ≥ 40 GB: Wan 14B, không nhép miệng.
+- Yếu hơn: Wan 5B.
+- Thiếu file model nào thì tự lùi sang model còn lại, cuối cùng là Ken Burns.
+
+**Cấu hình thêm:**
+- Log ghi rõ lựa chọn, ví dụ: `Pod: NVIDIA A40 45 GB VRAM, RAM 46 GB -> mức chất lượng 'thường'`.
+- Ngưỡng và giá trị sửa trong `settings.yaml > quality` và `motion.auto`.
+- Muốn cố định: `quality.auto: false`, `motion.model: wan22_14b`.
+
+## 8. Tắt pod rồi bật lại
+
+1. **Pods** → chọn pod → **Start**. Nếu hết máy: Deploy pod mới, gắn **cùng volume `ai_video_studio`** (volume Global dùng được ở mọi vùng).
+2. Jupyter → Terminal:
    ```bash
-   cd /workspace && tar -czf du_an.tgz video_studio_projects
+   curl -fsSL https://raw.githubusercontent.com/SonNPXSE183201/Video_Studio/main/pod/bootstrap.sh | bash
+   cd /root/AI_Video_Studio && nohup bash run.sh run <du_an> --stop-pod > /workspace/run.log 2>&1 &
    ```
-   Tải file đó về máy (qua Jupyter, hoặc `runpodctl send du_an.tgz`), rồi đưa lên `/workspace` của pod mới và chạy:
-   ```bash
-   tar -xzf du_an.tgz -C /workspace
-   ```
-   Giữ lại dự án cũ giúp tool dùng lại được Story Bible, ảnh mẫu nhân vật và cache, không phải làm lại.
-3. Chép `rclone.conf` vào `/workspace/rclone.conf`.
+   - Lệnh đầu mất 10–20 phút: cài lại Python/ComfyUI rồi chép model từ volume sang ổ nhanh.
+   - Lệnh sau tự làm tiếp từ chỗ dừng và bỏ qua chương đã `.done`.
+   - Gộp thành một lệnh: `curl ... | AUTO_RUN=1 PROJECT=<du_an> bash`.
 
-## 5. Tùy chọn khi cài
-
-Đặt biến trước lệnh, ví dụ `... | INSTALL_WAN14B=1 bash`:
-
-| Biến | Tác dụng |
+| Còn (volume `/workspace`) | Mất khi Stop (bootstrap tạo lại) |
 |---|---|
-| `INSTALL_WAN14B=1` | Chuyển động đẹp hơn, thêm khoảng 32 GB. Cần GPU ≥ 32 GB, rồi đặt `motion.model: wan22_14b` |
-| `INSTALL_SDXL=0` | Bỏ model dự phòng SDXL, tiết kiệm 7 GB |
-| `INSTALL_QWEN_EDIT=0` | Bỏ chức năng giữ mặt nhân vật, tiết kiệm 15 GB (không khuyến nghị) |
-| `UPDATE_COMFYUI=1` | Cập nhật ComfyUI khi `check` báo thiếu node |
-| `LOCAL_MODEL_CACHE=0` | Không chép model sang ổ container (khi container disk nhỏ) |
-| `AUTO_RUN=1 PROJECT=<du_an>` | Cài xong tự chạy dự án ở chế độ nền |
+| Model AI, `rclone.conf`, dự án (chương, bible, ảnh mẫu, cache, `.done`) | Code `/root/AI_Video_Studio`, Python, ComfyUI, Ollama, bản chép model trên ổ nhanh |
 
-## 6. Sự cố thường gặp
+## 9. Chuyển sang tài khoản RunPod khác
+
+Volume **không chuyển được giữa các tài khoản**.
+1. Trên tài khoản mới, làm lại mục 3–4 (tải lại model, 40–60 phút).
+2. Mang dự án cũ sang:
+   - Trên pod cũ: `cd /workspace && tar -czf du_an.tgz video_studio_projects`.
+   - Tải file về máy (chuột phải → Download trong Jupyter), rồi kéo vào `/workspace` của pod mới.
+   - Trên pod mới: `tar -xzf du_an.tgz -C /workspace`.
+
+   Giữ dự án cũ để dùng lại Story Bible, ảnh mẫu nhân vật và cache.
+3. Kéo `rclone.conf` vào `/workspace`.
+
+## 10. Chi phí và số đo thực tế
+
+**Volume:** ~$4.5/tháng (Global, ~150 GB), cộng phí đọc/ghi.
+
+**Pod:** giá GPU + ổ container 200 GB (~$0.028/giờ). Chỉ tính tiền khi pod chạy; mỗi lần bật mất thêm 10–20 phút cài.
+
+**Số đo thật (chế độ cũ, 19/11/2026, RTX PRO 4500, chương 7,5 phút video):**
+
+| Bước | Thời gian |
+|---|---|
+| Phân tích + đạo diễn 27 cảnh | ~3 phút |
+| Giọng đọc 90 đoạn | 3,8 phút |
+| Vẽ 27 ảnh + QA + vẽ lại | 14 phút (~10 s/ảnh không có ảnh mẫu, ~20 s/ảnh có ảnh mẫu) |
+| Chuyển động 7 clip Wan 5B | 19 phút (~2 phút/clip) |
+| Dựng video (NVENC) | 4 phút |
+| **Tổng** | **~45 phút, ~$0.55** |
+
+Các điểm nghẽn đo được đã sửa trong code:
+- Chép model sang ổ container: volume Global đọc chỉ ~170 MB/s.
+- Dùng LoRA Lightning cho Qwen-Edit: từ 130 s/ảnh xuống ~20 s/ảnh.
+- Dùng một model vẽ cho mọi cảnh: đổi model mất ~6 phút mỗi lần.
+
+**Chế độ phim** tạo chuyển động cho mọi cảnh (~120 clip mỗi chương), nên ước tính đắt hơn khoảng 3–4 lần: **~$1.5–2.5/chương**. Muốn giảm:
+- `motion.coverage: ratio` + `motion.ratio: 0.3`: chỉ 30% số cảnh có chuyển động.
+- `motion.lipsync: false`: tắt nhép miệng.
+
+## 11. Tùy chọn khi cài
+
+Đặt biến trước `bash`, ví dụ `curl ... | INSTALL_SDXL=0 bash`:
+
+| Biến | Mặc định | Tác dụng |
+|---|---|---|
+| `INSTALL_WAN14B` | 1 | Wan 2.2 14B I2V (~30 GB) |
+| `INSTALL_S2V` | 1 | Wan 2.2 S2V nhép miệng (~17 GB) |
+| `INSTALL_WAN5B` | 1 | Wan 2.2 5B cho pod yếu (~10 GB) |
+| `INSTALL_QWEN_EDIT` | 1 | Qwen-Image-Edit, model vẽ chính (~21 GB) |
+| `INSTALL_QWEN_IMAGE` | 1 | Qwen-Image dự phòng (~21 GB) |
+| `INSTALL_SDXL` | 1 | SDXL dự phòng cuối (~7 GB) |
+| `UPDATE_COMFYUI` | 0 | `1` = cập nhật ComfyUI khi `check` báo thiếu node |
+| `LOCAL_MODEL_CACHE` | 1 | `0` = không chép model sang ổ container (khi container disk nhỏ) |
+| `LOCAL_MODEL_CACHE_RESERVE_GB` | 8 | Dung lượng chừa lại trên ổ container |
+| `AUTO_RUN=1 PROJECT=<du_an>` | — | Cài xong tự chạy dự án ở chế độ nền |
+
+## 12. Sự cố thường gặp
 
 | Triệu chứng | Cách xử lý |
 |---|---|
-| `git clone` báo `chmod ... Operation not permitted` | Volume Global: dùng lệnh bootstrap, vì code đặt ở `/root` |
+| `git clone` báo `chmod ... Operation not permitted` | Volume Global: dùng lệnh bootstrap (code đặt ở `/root`) |
 | `Ollama/ComfyUI chưa chạy` | Chạy lại lệnh bootstrap |
-| `CUDA out of memory` | `motion.model: wan22_5b`, hoặc `motion.enabled: false` |
-| `no kernel image is available` (Blackwell) | Dùng template CUDA 12.8; chạy lại bootstrap |
-| Pod bị kill, log dừng đột ngột | Thiếu RAM: thuê pod RAM ≥ 48 GB |
-| Dựng video rất chậm | Pod không có NVENC (MIG/B300): thuê pod nhiều vCPU hơn, hoặc GPU khác |
-| Ảnh một cảnh xấu | `bash run.sh redo <du_an> --ch 484 --scene 12 --stage image` |
-| Đọc sai tên riêng | Thêm vào `bible/glossary.json`, rồi `run --force audio` |
-| Xem log | `/workspace/setup.log`, `/workspace/run.log`, `/workspace/ai-video-studio-runtime/logs/` |
+| `CUDA out of memory` | Đặt `motion.model: wan22_5b`, hoặc `quality.auto: false` |
+| `no kernel image is available` | GPU Blackwell: dùng template CUDA 12.8, chạy lại bootstrap |
+| Pod bị kill, log dừng đột ngột | Thiếu RAM: thuê máy RAM cao hơn (xem cột RAM khi Deploy) |
+| Dựng video rất chậm | Máy không có NVENC: chọn máy khác |
+| Upload Drive lỗi `invalid_grant` | Token hết hạn: trên máy nhà chạy `rclone config reconnect gdrive:`, rồi kéo `rclone.conf` mới vào `/workspace` |
+| Ảnh một cảnh xấu | `bash run.sh redo <du_an> --ch 1 --scene 12 --stage image` |
+| Đọc sai tên riêng / từ mượn | Thêm vào `bible/glossary.json`, rồi chạy `run --force audio` |
+| Terminal Jupyter không hiện chữ | Gõ `echo .` rồi Enter để làm mới màn hình |
+| Log | `/workspace/setup.log`, `/workspace/run.log`, `/workspace/ai-video-studio-runtime/logs/`, `<du_an>/logs/` |

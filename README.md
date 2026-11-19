@@ -68,7 +68,7 @@ genre_by_chapter:
 - Template **PyTorch 2.8, CUDA 12.8.1**.
 - **Container disk 200 GB**: setup chép model hay dùng sang ổ này để đọc nhanh.
 - Volume gắn tại `/workspace`. Volume Global hoặc Network đều được.
-- GPU có NVENC. Gợi ý: RTX PRO 4500 SE, L40S, RTX PRO 6000.
+- GPU có NVENC, **RAM ≥ 40 GB** để dùng Wan 14B + nhép miệng. Gợi ý: A40 (rẻ nhất), RTX PRO 4500 SE, L40S (tự lên mức "cao"), RTX PRO 6000 (mức "tối đa"). Bảng chi tiết: mục 2 trong hướng dẫn.
 - Tool **tự phát hiện VRAM/RAM** rồi chọn model: pod mạnh dùng Wan 14B + nhép miệng; pod yếu tự lùi về Wan 5B và bỏ nhép miệng.
 
 ### 2. Cài đặt: chạy lại đúng lệnh này sau mỗi lần Start pod
@@ -94,7 +94,7 @@ bash run.sh check
 ```bash
 bash run.sh new "Ten Bo Truyen" --from /workspace/upload     # tạo dự án, nhập các file chương .txt
 bash run.sh run ten_bo_truyen --chapters 1 --until images     # xem thử ảnh chương 1 trước
-nohup bash run.sh run ten_bo_truyen --stop-pod > /workspace/run.log 2>&1 &   # chạy hết, xong tự tắt pod
+nohup bash run.sh run ten_bo_truyen --stop-pod > /workspace/run.log 2>&1 &   # chạy hết, xong tự tắt pod (qua RunPod API)
 tail -f /workspace/run.log
 ```
 

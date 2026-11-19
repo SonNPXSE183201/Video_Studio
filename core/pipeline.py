@@ -250,9 +250,10 @@ class Studio:
                     "Muốn làm lại: --force done", "Studio")
                 chapters = [(n, p) for n, p in chapters if n not in done]
             if not chapters:
-                log("Không có chương nào khớp để xử lý.", "Studio")
-                return False
-            log(f"Dự án '{self.project.slug}': {len(chapters)} chương cần kiểm tra.", "Studio")
+                log("Không có chương nào cần xử lý.", "Studio")
+                failures.append(0)   # báo "không làm gì", nhưng vẫn tắt pod nếu có --stop-pod
+            else:
+                log(f"Dự án '{self.project.slug}': {len(chapters)} chương cần kiểm tra.", "Studio")
             for number, path in chapters:
                 try:
                     self.process_chapter(number, path)
@@ -262,24 +263,43 @@ class Studio:
                     failures.append(number)
                     log(f"CHƯƠNG {number} LỖI: {exc}", "LỖI")
                     log(traceback.format_exc()[-2000:], "LỖI")
-            if self.until in (None, "render"):
+            if chapters and self.until in (None, "render"):
                 self.build_episodes(finish)
         finally:
             self.free_gpu(keep="none")
             if os.path.exists(lock):
                 os.remove(lock)
-        log(f"Hoàn tất sau {format_duration(time.time() - started)}. Lỗi: {failures or 'không'}", "Studio")
+        errors = [n for n in failures if n]
+        log(f"Hoàn tất sau {format_duration(time.time() - started)}. Lỗi: {errors or 'không'}", "Studio")
         if self.opt.get("stop_pod") or self.cfg.get("runpod", {}).get("stop_pod_when_done"):
             self.stop_pod()
         return not failures
 
     def stop_pod(self) -> None:
+        """Tắt pod để ngừng tính tiền: RunPod API (khóa có sẵn trong pod), dự phòng runpodctl."""
         pod_id = os.environ.get("RUNPOD_POD_ID")
-        if pod_id and shutil.which("runpodctl"):
-            log(f"Tắt pod {pod_id} để ngừng tính tiền...", "Studio")
+        if not pod_id:
+            log("Không thấy RUNPOD_POD_ID (không chạy trên RunPod?), không tự tắt pod.", "Studio")
+            return
+        log(f"Tắt pod {pod_id} để ngừng tính tiền...", "Studio")
+        api_key = os.environ.get("RUNPOD_API_KEY")
+        if api_key:
+            try:
+                import requests
+
+                query = 'mutation { podStop(input: {podId: "%s"}) { id desiredStatus } }' % pod_id
+                res = requests.post("https://api.runpod.io/graphql", params={"api_key": api_key},
+                                    json={"query": query}, timeout=30)
+                if res.ok and "desiredStatus" in res.text:
+                    log(f"Đã gửi lệnh tắt pod: {res.text[:200]}", "Studio")
+                    return
+                log(f"RunPod API chưa tắt được pod: {res.status_code} {res.text[:200]}", "Studio")
+            except Exception as exc:
+                log(f"RunPod API lỗi: {exc}", "Studio")
+        if shutil.which("runpodctl"):
             subprocess.run(["runpodctl", "stop", "pod", pod_id])
         else:
-            log("Không tìm thấy RUNPOD_POD_ID/runpodctl, không tự tắt pod.", "Studio")
+            log("Không tắt được pod tự động: hãy bấm Stop trên RunPod.", "Studio")
 
     # ============================================================ chapter
     def process_chapter(self, number: int, path: str) -> None:
